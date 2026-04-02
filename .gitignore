@@ -1,0 +1,12 @@
+.env
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+node_modules/
+frontend/dist/
+run.log
+winning_proposal.md
+*.egg-info/
+.DS_Store
