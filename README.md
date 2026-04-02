@@ -9,6 +9,8 @@ An autonomous writing optimizer that combines two frameworks by Andrej Karpathy:
 
 The demo topic — *"Autoresearch + LLM Council is the simplest, cheapest way to achieve recursive self-intelligence"* — is itself proof of concept: the system is continuously improving the argument for its own existence.
 
+> **Status: early development.** This project has not been extensively tested. Expect rough edges, especially around Windows path handling, port conflicts, and OpenRouter model availability. Contributions and bug reports welcome.
+
 ---
 
 ## How It Works
