@@ -196,6 +196,8 @@ The default `COST_LIMIT_USD = 5.00` gives ~277 iterations. Cost is tracked in re
 
 | Document | Description |
 |----------|-------------|
+| [docs/QUICKSTART.md](docs/QUICKSTART.md) | Step-by-step setup and first quick wins |
+| [docs/USER_GUIDE.md](docs/USER_GUIDE.md) | Dashboard walkthrough, steering, long runs, custom topics |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Data flow, component map, design decisions |
 | [docs/API_REFERENCE.md](docs/API_REFERENCE.md) | All REST endpoints and SSE event types |
 | [docs/CONFIGURATION.md](docs/CONFIGURATION.md) | Full config reference with explanations |
