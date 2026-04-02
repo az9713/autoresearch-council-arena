@@ -24,7 +24,7 @@ The demo topic — *"Autoresearch + LLM Council is the simplest, cheapest way to
 │  │                                                          │   │
 │  │  Stage 1 ─ Parallel Proposals                           │   │
 │  │  ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐           │   │
-│  │  │GPT-4o  │ │Claude  │ │Gemini  │ │Llama-4 │ → A B C D │   │
+│  │  │GPT-5.4n│ │Haiku3.5│ │Gem3.1  │ │Grok3mn │ → A B C D │   │
 │  │  └────────┘ └────────┘ └────────┘ └────────┘           │   │
 │  │                                                          │   │
 │  │  Stage 2 ─ Anonymous Ranking (shuffled letters)         │   │
@@ -32,7 +32,7 @@ The demo topic — *"Autoresearch + LLM Council is the simplest, cheapest way to
 │  │  → aggregate avg_position per version                   │   │
 │  │                                                          │   │
 │  │  Stage 3 ─ Chairman Judgment                            │   │
-│  │  Claude Sonnet selects winner, assigns score 1–100      │   │
+│  │  GPT-4o Mini selects winner, assigns score 1–100        │   │
 │  │  → winning_proposal.md  +  critique.md                  │   │
 │  └──────────────────────────────────────────────────────────┘   │
 │                                                                 │
@@ -48,7 +48,7 @@ The demo topic — *"Autoresearch + LLM Council is the simplest, cheapest way to
                      frontend/  (React + Vite, port 5173)
 ```
 
-**9 API calls per iteration** · ~$0.018/iteration · ~$1.80 per 100 iterations.
+**9 API calls per iteration** · ~$0.019/iteration · ~$1.90 per 100 iterations.
 
 ---
 
@@ -138,7 +138,7 @@ OPENROUTER_API_KEY=sk-or-v1-...
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `COUNCIL_MODELS` | 4 models (see below) | Proposers and evaluators |
-| `CHAIRMAN_MODEL` | `claude-sonnet-4` | Stage 3 judge |
+| `CHAIRMAN_MODEL` | `gpt-4o-mini` | Stage 3 judge (must not be in COUNCIL_MODELS) |
 | `IMPROVEMENT_THRESHOLD` | `2` | Minimum score delta to KEEP |
 | `EXPERIMENT_TIMEOUT` | `300` | Wall-clock budget per iteration (seconds) |
 | `MAX_ARTIFACT_WORDS` | `3000` | Hard cap — proposals over this fall back to E |
@@ -184,12 +184,12 @@ The left sidebar shows iteration count, best score, KEEP/DISCARD totals, word co
 
 | Component | Calls/iteration | Estimated cost |
 |-----------|----------------|----------------|
-| Stage 1 (4 proposals) | 4 | ~$0.012 |
-| Stage 2 (4 rankings) | 4 | ~$0.004 |
-| Stage 3 (1 chairman) | 1 | ~$0.002 |
-| **Total** | **9** | **~$0.018** |
+| Stage 1 — 4 proposals (A/B/C/D) | 4 | ~$0.008 |
+| Stage 2 — 4 anonymous rankings | 4 | ~$0.010 |
+| Stage 3 — 1 chairman judgment | 1 | ~$0.001 |
+| **Total** | **9** | **~$0.019** |
 
-The default `COST_LIMIT_USD = 5.00` gives ~277 iterations. Cost is tracked in real time via OpenRouter's credits API — no estimating.
+Claude Haiku (council B) is the most expensive model in the lineup — it dominates Stage 1 and Stage 2 costs. The default `COST_LIMIT_USD = 5.00` gives ~260 iterations. Cost is tracked in real time via OpenRouter's credits API — no estimating.
 
 ---
 
@@ -199,6 +199,7 @@ The default `COST_LIMIT_USD = 5.00` gives ~277 iterations. Cost is tracked in re
 |----------|-------------|
 | [docs/QUICKSTART.md](docs/QUICKSTART.md) | Step-by-step setup and first quick wins |
 | [docs/USER_GUIDE.md](docs/USER_GUIDE.md) | Dashboard walkthrough, steering, long runs, custom topics |
+| [docs/MODELS.md](docs/MODELS.md) | Model lineup, roles, pricing, conflict rules, swapping guide |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Data flow, component map, design decisions |
 | [docs/API_REFERENCE.md](docs/API_REFERENCE.md) | All REST endpoints and SSE event types |
 | [docs/CONFIGURATION.md](docs/CONFIGURATION.md) | Full config reference with explanations |

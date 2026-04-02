@@ -114,7 +114,7 @@ Each ranker produces a `FINAL RANKING: B > E > A > C > D` line. Rankings are par
 
 ### Stage 3: Chairman Judgment
 
-The chairman (Claude Sonnet 4) receives:
+The chairman (`openai/gpt-4o-mini`) receives:
 
 - All proposals with their original letter labels (A/B/C/D)
 - Current artifact as Version E
