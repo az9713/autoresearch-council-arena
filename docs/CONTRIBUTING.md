@@ -99,7 +99,7 @@ Edit `COUNCIL_MODELS` in `config.py`. Requirements:
 
 1. All models must be available on [OpenRouter](https://openrouter.ai/models)
 2. At least 2 models must return valid responses in Stage 1 and Stage 2
-3. The model ID must be the exact OpenRouter slug (e.g., `openai/gpt-4o`, not `gpt-4o`)
+3. The model ID must be the exact OpenRouter slug (e.g., `openai/gpt-5.4-nano`, not `gpt-5.4-nano`)
 
 To test a new model without changing the full council, temporarily replace one entry and run a single iteration:
 

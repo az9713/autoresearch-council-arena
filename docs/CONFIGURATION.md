@@ -32,19 +32,19 @@ API_TIMEOUT = 120  # seconds per model call
 
 ```python
 COUNCIL_MODELS = [
-    "openai/gpt-4o",
-    "anthropic/claude-sonnet-4",
-    "google/gemini-2.5-flash-preview",
-    "meta-llama/llama-4-maverick",
+    "openai/gpt-5.4-nano",
+    "anthropic/claude-haiku-3-5",
+    "google/gemini-3.1-flash-lite-preview",
+    "x-ai/grok-4-1-fast-reasoning",
 ]
-CHAIRMAN_MODEL = "anthropic/claude-sonnet-4"
+CHAIRMAN_MODEL = "anthropic/claude-haiku-3-5"
 ```
 
 **`COUNCIL_MODELS`** — the four models used in Stage 1 (propose) and Stage 2 (rank). Letters A/B/C/D are assigned in list order. To swap a model, replace its ID — no other code changes are needed.
 
 Model IDs must be valid [OpenRouter model slugs](https://openrouter.ai/models). Check OpenRouter for exact IDs; they sometimes differ from official model names.
 
-**`CHAIRMAN_MODEL`** — the Stage 3 judge. Does not need to match any council model. Default is Claude Sonnet 4 for its strong editorial judgment and consistent scoring.
+**`CHAIRMAN_MODEL`** — the Stage 3 judge. Does not need to match any council model. Default is Claude Haiku 3.5 for its strong editorial judgment and consistent scoring.
 
 **Minimum viable council size:** At least 2 models must return valid proposals in Stage 1 and valid rankings in Stage 2. If fewer than 2 rankings are parseable, `evaluate.py` exits with code 1 and `run.py` logs a CRASH.
 

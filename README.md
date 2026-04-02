@@ -151,10 +151,10 @@ The four council models are chosen for diversity across reasoning axes:
 
 | Model | Axis |
 |-------|------|
-| `openai/gpt-4o` | Analytical / structured reasoning |
-| `anthropic/claude-sonnet-4` | Creative / nuanced prose |
-| `google/gemini-2.5-flash-preview` | Fast / broad knowledge |
-| `meta-llama/llama-4-maverick` | Contrarian / open-source |
+| `openai/gpt-5.4-nano` | Analytical / structured reasoning |
+| `anthropic/claude-haiku-3-5` | Creative / nuanced prose |
+| `google/gemini-3.1-flash-lite-preview` | Fast / broad knowledge |
+| `x-ai/grok-4-1-fast-reasoning` | Contrarian / reasoning |
 
 Swap any model by editing `COUNCIL_MODELS` in `config.py` — no other changes needed. All models must be valid [OpenRouter slugs](https://openrouter.ai/models).
 
