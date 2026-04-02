@@ -149,12 +149,13 @@ OPENROUTER_API_KEY=sk-or-v1-...
 
 The four council models are chosen for diversity across reasoning axes:
 
-| Model | Axis |
-|-------|------|
-| `openai/gpt-5.4-nano` | Analytical / structured reasoning |
-| `anthropic/claude-haiku-3-5` | Creative / nuanced prose |
-| `google/gemini-3.1-flash-lite-preview` | Fast / broad knowledge |
-| `x-ai/grok-4-1-fast-reasoning` | Contrarian / reasoning |
+| Letter | Model | Axis |
+|--------|-------|------|
+| A | `openai/gpt-5.4-nano` | Analytical / structured reasoning |
+| B | `anthropic/claude-3-5-haiku` | Creative / nuanced prose |
+| C | `google/gemini-3.1-flash-lite-preview` | Fast / broad knowledge |
+| D | `x-ai/grok-3-mini-beta` | Contrarian / reasoning |
+| Chairman | `openai/gpt-4o-mini` | Stage 3 judge (conflict-free) |
 
 Swap any model by editing `COUNCIL_MODELS` in `config.py` — no other changes needed. All models must be valid [OpenRouter slugs](https://openrouter.ai/models).
 

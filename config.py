@@ -13,14 +13,14 @@ API_TIMEOUT = 120  # seconds per model call
 # All available via OpenRouter (single API key).
 # Swap any model by editing this list — no other code changes needed.
 COUNCIL_MODELS = [
-    "openai/gpt-5.4-nano",                      # analytical / structured
-    "anthropic/claude-haiku-3-5",               # creative / nuanced
-    "google/gemini-3.1-flash-lite-preview",     # fast / broad knowledge
-    "x-ai/grok-4-1-fast-reasoning",             # contrarian / reasoning
+    "openai/gpt-5.4-nano",                      # A — analytical / structured
+    "anthropic/claude-3-5-haiku",               # B — creative / nuanced
+    "google/gemini-3.1-flash-lite-preview",     # C — fast / broad knowledge
+    "x-ai/grok-3-mini-beta",                    # D — contrarian / reasoning
 ]
 
-# Chairman synthesizes Stage 3. Defaults to the strongest writer.
-CHAIRMAN_MODEL = "anthropic/claude-haiku-3-5"
+# Chairman synthesizes Stage 3. Must not appear in COUNCIL_MODELS (no conflict).
+CHAIRMAN_MODEL = "openai/gpt-4o-mini"
 
 # --- Experiment loop ---
 IMPROVEMENT_THRESHOLD = 2   # council_score must improve by >= this to KEEP
