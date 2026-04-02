@@ -1,156 +1,222 @@
-# autoresearch-council-arena
+# AutoResearch Council Arena
 
 **4 AIs compete to write the best argument for why they should exist. The best version survives.**
 
 An autonomous writing optimizer that combines two frameworks by Andrej Karpathy:
 
-- **[autoresearch](https://github.com/karpathy/autoresearch)** — the experiment loop (commit → evaluate → keep/discard → repeat forever)
-- **[llm-council](https://github.com/karpathy/llm-council)** — the evaluation pipeline (parallel proposals → anonymous ranking → chairman synthesis)
+- **[autoresearch](https://github.com/karpathy/autoresearch)** — greedy hill-climbing experiment loop (commit → evaluate → keep/discard → repeat forever)
+- **[llm-council](https://github.com/karpathy/llm-council)** — multi-model consensus pipeline (parallel proposals → anonymous ranking → chairman synthesis)
 
-Each iteration, 4 language models compete to improve the current draft. They then anonymously rank each other's proposals. A chairman picks the winner and assigns a `council_score`. If the score improves, the artifact is updated and committed. Otherwise, discarded. The loop runs overnight.
-
----
-
-## Demo topic
-
-> "Autoresearch + LLM Council is the simplest, cheapest way to achieve recursive self-intelligence."
-
-The system argues for its own existence — and its quality of argument is the proof of its thesis.
+The demo topic — *"Autoresearch + LLM Council is the simplest, cheapest way to achieve recursive self-intelligence"* — is itself proof of concept: the system is continuously improving the argument for its own existence.
 
 ---
 
-## How it works
+## How It Works
 
 ```
-┌──────────────────────── autoresearch loop ────────────────────────┐
-│                                                                    │
-│   ┌──────────── llm-council pipeline (per iteration) ──────────┐  │
-│   │                                                             │  │
-│   │  Stage 1: 4 models propose improved artifact (parallel)    │  │
-│   │  Stage 2: Anonymous ranking — "Version A/B/C/D/E"          │  │
-│   │           (E = current artifact as baseline)                │  │
-│   │  Stage 3: Chairman picks winner, assigns council_score      │  │
-│   │                                                             │  │
-│   └─────────────────────────────────────────────────────────────┘  │
-│                            ↓                                       │
-│   council_score > best + threshold?                                │
-│     YES → KEEP (write winning version, git commit)                 │
-│     NO  → DISCARD (no commit, log to results.tsv)                  │
-│                            ↓                                       │
-│   Log to results.tsv, save critique.md, repeat forever             │
-└────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                      run.py  (NEVER STOP)                       │
+│                                                                 │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │                  evaluate.py  (FROZEN)                   │   │
+│  │                                                          │   │
+│  │  Stage 1 ─ Parallel Proposals                           │   │
+│  │  ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐           │   │
+│  │  │GPT-4o  │ │Claude  │ │Gemini  │ │Llama-4 │ → A B C D │   │
+│  │  └────────┘ └────────┘ └────────┘ └────────┘           │   │
+│  │                                                          │   │
+│  │  Stage 2 ─ Anonymous Ranking (shuffled letters)         │   │
+│  │  Same 4 models rank A B C D E (E = current artifact)    │   │
+│  │  → aggregate avg_position per version                   │   │
+│  │                                                          │   │
+│  │  Stage 3 ─ Chairman Judgment                            │   │
+│  │  Claude Sonnet selects winner, assigns score 1–100      │   │
+│  │  → winning_proposal.md  +  critique.md                  │   │
+│  └──────────────────────────────────────────────────────────┘   │
+│                                                                 │
+│  score > best + threshold?                                      │
+│    KEEP    → write artifact.md, git commit, update best_score   │
+│    DISCARD → artifact.md unchanged, no commit                   │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                    events.jsonl  (append-only IPC)
+                              │
+               backend/server.py  (FastAPI SSE, port 8001)
+                              │
+                     frontend/  (React + Vite, port 5173)
 ```
 
-**9 API calls per iteration** (~$0.005–0.02 depending on models).  
-**~200 iterations per hour** possible.  
-**~$1–4 for an overnight run.**
+**9 API calls per iteration** · ~$0.018/iteration · ~$1.80 per 100 iterations.
 
 ---
 
-## File structure
+## Quick Start
 
-```
-autoresearch-council-arena/
-├── evaluate.py     FROZEN — three-stage council pipeline (don't edit)
-├── artifact.md     EDITABLE — the writing being optimized
-├── program.md      GUIDANCE — topic, audience, criteria (edit to change the task)
-├── config.py       Council models, chairman, thresholds
-├── openrouter.py   Async LLM client
-├── run.py          Autonomous experiment loop
-├── results.tsv     Experiment log (auto-generated)
-├── critique.md     Latest chairman critique (auto-generated)
-├── backend/        FastAPI SSE server
-└── frontend/       React dashboard
-```
+### Prerequisites
 
-The three-file discipline from autoresearch is strictly followed:
-- `evaluate.py` is frozen (never modified after setup)
-- `artifact.md` is the only file that changes between iterations
-- `program.md` is the human's control point
+- [uv](https://docs.astral.sh/uv/getting-started/installation/) — Python package manager
+- [Node.js](https://nodejs.org/) 18+
+- An [OpenRouter](https://openrouter.ai/) API key with credits
 
----
+### Setup
 
-## Setup
-
-**1. Prerequisites**
-- Python 3.10+
-- [uv](https://docs.astral.sh/uv/) (`pip install uv`)
-- Node.js 18+ and npm
-- An [OpenRouter](https://openrouter.ai/) API key
-
-**2. Clone and configure**
 ```bash
-git clone https://github.com/YOUR_USERNAME/autoresearch-council-arena
+git clone https://github.com/az9713/autoresearch-council-arena
 cd autoresearch-council-arena
+
 cp .env.example .env
-# Edit .env and add your OPENROUTER_API_KEY
+# Edit .env — add your OPENROUTER_API_KEY
 ```
 
-**3. Run**
+### Run
+
 ```bash
 bash start.sh
 ```
 
-Opens:
-- **http://localhost:5173** — live dashboard
-- **http://localhost:8001** — backend API
+| URL | Service |
+|-----|---------|
+| http://localhost:5173 | Live dashboard |
+| http://localhost:8001 | REST API + SSE |
+| http://localhost:8001/docs | Swagger UI |
 
-The experiment loop starts automatically and runs until you press `Ctrl+C`.
-
----
-
-## Customizing the task
-
-Edit `program.md` to change the topic, audience, and evaluation criteria.  
-Edit `artifact.md` to change the starting draft (weaker start = more dramatic improvement arc).  
-Edit `config.py` to swap models.
-
-**Model selection** (from `config.py`):
-
-| Slot | Default | Axis |
-|------|---------|------|
-| 1 | `openai/gpt-4o` | Analytical / structured |
-| 2 | `anthropic/claude-sonnet-4` | Creative / nuanced |
-| 3 | `google/gemini-2.5-flash-preview` | Fast / broad knowledge |
-| 4 | `meta-llama/llama-4-maverick` | Contrarian / open-source |
-
-Swap any model by editing the `COUNCIL_MODELS` list — no other code changes needed.  
-All models must be available on [OpenRouter](https://openrouter.ai/models).
+Press **Ctrl+C** to stop everything.
 
 ---
 
-## Cost breakdown
+## Project Structure
 
-| Component | Calls/iter | Est. cost/iter |
-|-----------|-----------|----------------|
-| Stage 1 (4 proposals) | 4 | ~$0.008 |
-| Stage 2 (4 rankings) | 4 | ~$0.006 |
-| Stage 3 (1 chairman) | 1 | ~$0.004 |
-| **Total** | **9** | **~$0.018** |
+```
+autoresearch-council-arena/
+├── run.py              # Experiment loop — greedy hill-climbing, git commits, cost limit
+├── evaluate.py         # FROZEN — three-stage council pipeline (never modify)
+├── openrouter.py       # Async LLM client (asyncio.gather parallel calls)
+├── config.py           # Models, thresholds, cost limit
+├── program.md          # Human control point: topic, audience, evaluation criteria
+├── artifact.md         # Current best version (auto-updated on KEEP)
+│
+├── backend/
+│   └── server.py       # FastAPI SSE server
+│
+├── frontend/
+│   └── src/
+│       ├── App.jsx          # Layout, SSE consumer, 5s polling
+│       ├── Stage1.jsx       # Proposals tab (A/B/C/D with model labels)
+│       ├── Stage2.jsx       # Rankings tab (street-cred bar chart)
+│       ├── Stage3.jsx       # Verdict tab (score dial, critique, KEEP/DISCARD)
+│       ├── ArtifactView.jsx # Current artifact with expandable previous version
+│       └── ResultsChart.jsx # Score-over-time line chart (Recharts)
+│
+├── start.sh            # One-command launcher
+├── pyproject.toml      # Python dependencies
+└── .env.example        # API key template
+```
 
-100 iterations ≈ $1.80. Overnight run (500 iterations) ≈ $9.
+**Auto-generated at runtime** (not committed):
 
-Reduce cost by using cheaper models in `COUNCIL_MODELS` (e.g. `google/gemini-2.5-flash-preview` for all slots).
+| File | Description |
+|------|-------------|
+| `events.jsonl` | Append-only IPC between `evaluate.py` and SSE server |
+| `winning_proposal.md` | Latest winning proposal (read by `run.py` on KEEP) |
+| `critique.md` | Chairman critique, fed back into Stage 1 next iteration |
+| `results.tsv` | Full iteration log (commit, score, status, timestamp) |
 
 ---
 
-## Verification checklist
+## Configuration
+
+### `.env`
 
 ```bash
-# 1. Three-file discipline: evaluate.py should have 1 commit, artifact.md many
-git log --follow evaluate.py
-git log --follow artifact.md
+OPENROUTER_API_KEY=sk-or-v1-...
+```
 
-# 2. Council pipeline works standalone
-python evaluate.py
-# Expect: "council_score: XX" and "winner: X" in stdout
+### `config.py` — Key Settings
 
-# 3. Greedy logic: check results.tsv after 10 iterations
-# Only KEEP commits should appear in git log
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `COUNCIL_MODELS` | 4 models (see below) | Proposers and evaluators |
+| `CHAIRMAN_MODEL` | `claude-sonnet-4` | Stage 3 judge |
+| `IMPROVEMENT_THRESHOLD` | `2` | Minimum score delta to KEEP |
+| `EXPERIMENT_TIMEOUT` | `300` | Wall-clock budget per iteration (seconds) |
+| `MAX_ARTIFACT_WORDS` | `3000` | Hard cap — proposals over this fall back to E |
+| `PLATEAU_WINDOW` | `10` | Consecutive DISCARDs before plateau warning |
+| `COST_LIMIT_USD` | `5.00` | Stop when this much has been spent (`None` = no limit) |
+
+### Model Selection
+
+The four council models are chosen for diversity across reasoning axes:
+
+| Model | Axis |
+|-------|------|
+| `openai/gpt-4o` | Analytical / structured reasoning |
+| `anthropic/claude-sonnet-4` | Creative / nuanced prose |
+| `google/gemini-2.5-flash-preview` | Fast / broad knowledge |
+| `meta-llama/llama-4-maverick` | Contrarian / open-source |
+
+Swap any model by editing `COUNCIL_MODELS` in `config.py` — no other changes needed. All models must be valid [OpenRouter slugs](https://openrouter.ai/models).
+
+### Customizing the Topic
+
+Edit `program.md` to change what the system optimizes. It defines the topic, target audience, evaluation criteria, constraints, and exploration directions. This is the **only human control point** during a run — edit it between iterations to steer the optimization or break a plateau.
+
+---
+
+## Live Dashboard
+
+The React frontend auto-switches tabs as each stage completes:
+
+| Tab | Shows |
+|-----|-------|
+| **Artifact** | Current `artifact.md` with expandable previous version |
+| **Stage 1 · Proposals** | All four proposals with model labels and word counts |
+| **Stage 2 · Rankings** | Aggregate rankings with "street cred" bar visualization |
+| **Stage 3 · Verdict** | WINNER, COUNCIL_SCORE dial, KEEP/DISCARD status, critique |
+
+The left sidebar shows iteration count, best score, KEEP/DISCARD totals, word count, and a score-over-time line chart.
+
+---
+
+## Cost
+
+| Component | Calls/iteration | Estimated cost |
+|-----------|----------------|----------------|
+| Stage 1 (4 proposals) | 4 | ~$0.012 |
+| Stage 2 (4 rankings) | 4 | ~$0.004 |
+| Stage 3 (1 chairman) | 1 | ~$0.002 |
+| **Total** | **9** | **~$0.018** |
+
+The default `COST_LIMIT_USD = 5.00` gives ~277 iterations. Cost is tracked in real time via OpenRouter's credits API — no estimating.
+
+---
+
+## Documentation
+
+| Document | Description |
+|----------|-------------|
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Data flow, component map, design decisions |
+| [docs/API_REFERENCE.md](docs/API_REFERENCE.md) | All REST endpoints and SSE event types |
+| [docs/CONFIGURATION.md](docs/CONFIGURATION.md) | Full config reference with explanations |
+| [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) | Dev setup, conventions, debugging guide |
+
+---
+
+## Verification
+
+```bash
+# Evaluate.py works standalone (one iteration, no loop)
+uv run python evaluate.py
+# Expected output includes: "council_score: XX" and "winner: X"
+
+# Stage 1 parallelism — should complete in ~8s, not ~32s
+time uv run python evaluate.py 2>&1 | grep "Stage 1 complete"
+
+# Git discipline — only KEEP iterations produce commits
 git log --oneline
 
-# 4. Parallel Stage 1: should complete in ~8s (not ~32s)
-time python evaluate.py 2>&1 | grep "Stage 1 complete"
+# Three-file discipline — evaluate.py has 1 commit, artifact.md has many
+git log --follow evaluate.py
+git log --follow artifact.md
 ```
 
 ---
@@ -158,7 +224,7 @@ time python evaluate.py 2>&1 | grep "Stage 1 complete"
 ## Credits
 
 Built on:
-- [karpathy/autoresearch](https://github.com/karpathy/autoresearch) — autonomous ML experiment loop
-- [karpathy/llm-council](https://github.com/karpathy/llm-council) — multi-model consensus pipeline
+- [karpathy/autoresearch](https://github.com/karpathy/autoresearch) — autonomous experiment loop, greedy hill-climbing, git discipline
+- [karpathy/llm-council](https://github.com/karpathy/llm-council) — three-stage pipeline, FastAPI + SSE, async OpenRouter client
 
 Both frameworks by [Andrej Karpathy](https://github.com/karpathy). This project is their natural synthesis.

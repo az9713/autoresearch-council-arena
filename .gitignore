@@ -10,3 +10,5 @@ run.log
 winning_proposal.md
 *.egg-info/
 .DS_Store
+*.swp
+*.swo

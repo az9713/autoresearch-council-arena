@@ -22,7 +22,7 @@ fi
 
 # Install Python dependencies
 echo "[start] Installing Python dependencies..."
-uv pip install -e . --quiet
+uv pip install httpx python-dotenv fastapi uvicorn --quiet
 
 # Install frontend dependencies
 if [ ! -d frontend/node_modules ]; then
@@ -40,9 +40,8 @@ sleep 2
 
 # Start React frontend
 echo "[start] Starting frontend on http://localhost:5173 ..."
-cd frontend && npm run dev &
+(cd "$ROOT/frontend" && npm run dev) &
 FRONTEND_PID=$!
-cd ..
 
 sleep 2
 echo ""

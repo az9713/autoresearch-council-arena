@@ -20,7 +20,9 @@ import time
 from datetime import datetime
 from pathlib import Path
 
-from config import EXPERIMENT_TIMEOUT, IMPROVEMENT_THRESHOLD, PLATEAU_WINDOW
+import httpx
+
+from config import EXPERIMENT_TIMEOUT, IMPROVEMENT_THRESHOLD, PLATEAU_WINDOW, OPENROUTER_API_KEY, COST_LIMIT_USD
 
 # ---------------------------------------------------------------------------
 # Git helpers
@@ -103,12 +105,40 @@ def extract_metric(log_text: str, key: str) -> str | None:
 
 
 # ---------------------------------------------------------------------------
+# Cost tracking via OpenRouter credits API
+# ---------------------------------------------------------------------------
+
+def get_openrouter_credit_balance() -> float | None:
+    """Return remaining USD credit balance from OpenRouter, or None on failure."""
+    try:
+        r = httpx.get(
+            "https://openrouter.ai/api/v1/auth/key",
+            headers={"Authorization": f"Bearer {OPENROUTER_API_KEY}"},
+            timeout=10,
+        )
+        r.raise_for_status()
+        data = r.json().get("data", {})
+        # 'limit' is total credits, 'usage' is spent so far (both in USD)
+        limit = data.get("limit")
+        usage = data.get("usage", 0)
+        if limit is not None:
+            return float(limit) - float(usage)
+        # Some key types return only 'usage'
+        return None
+    except Exception as e:
+        print(f"[run] Could not fetch credit balance: {e}", flush=True)
+        return None
+
+
+# ---------------------------------------------------------------------------
 # Main loop
 # ---------------------------------------------------------------------------
 
 def main() -> None:
     run_tag = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
     print(f"[run] Starting autoresearch-council-arena run: {run_tag}", flush=True)
+    if COST_LIMIT_USD:
+        print(f"[run] Cost limit: ${COST_LIMIT_USD:.2f} USD", flush=True)
 
     git_setup(run_tag)
     init_results_tsv()
@@ -116,12 +146,32 @@ def main() -> None:
     # Clear stale events file
     Path("events.jsonl").write_text("", encoding="utf-8")
 
+    # Snapshot starting credit balance for cost tracking
+    initial_balance: float | None = get_openrouter_credit_balance()
+    if initial_balance is not None:
+        print(f"[run] Starting credit balance: ${initial_balance:.4f}", flush=True)
+    else:
+        print("[run] Warning: could not read credit balance — cost limit won't be enforced", flush=True)
+
     best_score: int = 0
     iteration: int = 0
 
     while True:  # NEVER STOP
         iteration += 1
-        print(f"\n[run] ===== Iteration {iteration} | best_score={best_score} =====", flush=True)
+
+        # --- Cost limit check ---
+        if COST_LIMIT_USD and initial_balance is not None:
+            current_balance = get_openrouter_credit_balance()
+            if current_balance is not None:
+                spent = initial_balance - current_balance
+                if spent >= COST_LIMIT_USD:
+                    print(f"\n[run] COST LIMIT REACHED: ${spent:.4f} spent (limit ${COST_LIMIT_USD:.2f}). Stopping.", flush=True)
+                    break
+                print(f"\n[run] ===== Iteration {iteration} | best_score={best_score} | spent=${spent:.4f} =====", flush=True)
+            else:
+                print(f"\n[run] ===== Iteration {iteration} | best_score={best_score} =====", flush=True)
+        else:
+            print(f"\n[run] ===== Iteration {iteration} | best_score={best_score} =====", flush=True)
 
         # --- Run evaluate.py with fixed time budget ---
         try:

@@ -27,3 +27,8 @@ IMPROVEMENT_THRESHOLD = 2   # council_score must improve by >= this to KEEP
 EXPERIMENT_TIMEOUT = 300    # 5-minute wall-clock budget per iteration (matches autoresearch)
 MAX_ARTIFACT_WORDS = 3000   # hard-reject proposals exceeding this
 PLATEAU_WINDOW = 10         # warn after this many consecutive DISCARDs
+
+# --- Cost limit ---
+# Stop the experiment loop after spending this many USD (tracked via OpenRouter credits API).
+# Set to None to disable.
+COST_LIMIT_USD: float | None = 5.00
