@@ -1,16 +1,12 @@
 /**
- * Stage1.jsx — Tabbed display of council proposals.
- * Adapted from karpathy/llm-council frontend Stage1.jsx pattern.
+ * Stage1.jsx — All council proposals displayed simultaneously as cards.
  */
-import { useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 
 const MODEL_LABELS = { A: 'Model A', B: 'Model B', C: 'Model C', D: 'Model D' }
 const COLORS = { A: '#7c8ff0', B: '#4ade80', C: '#f59e0b', D: '#f87171' }
 
 export default function Stage1({ proposals, modelNames }) {
-  const [active, setActive] = useState('A')
-
   if (!proposals) {
     return <Empty message="Waiting for Stage 1 proposals..." />
   }
@@ -21,50 +17,37 @@ export default function Stage1({ proposals, modelNames }) {
     <div>
       <h2 style={styles.heading}>Stage 1 — Competing Proposals</h2>
       <p style={styles.sub}>
-        {letters.length} model{letters.length !== 1 ? 's' : ''} proposed improvements in parallel — click each tab to read their full proposal.
+        {letters.length} model{letters.length !== 1 ? 's' : ''} proposed improvements in parallel.
         Labels are shuffled anonymously in Stage 2 to prevent positional bias.
       </p>
 
-      {/* Tabs */}
-      <div style={{ display: 'flex', gap: 6, marginBottom: 20, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
         {letters.map(l => (
-          <button key={l} onClick={() => setActive(l)} style={{
-            ...styles.tab,
-            background: active === l ? COLORS[l] : '#1e2438',
-            color: active === l ? '#fff' : '#8892b0',
-            outline: active === l ? 'none' : `1px solid #2a2f4a`,
-            transform: active === l ? 'none' : 'none',
-            opacity: 1,
-          }}>
-            {MODEL_LABELS[l] || `Model ${l}`}
-            {active !== l && <span style={{ fontSize: 10, marginLeft: 5, opacity: 0.5 }}>↗</span>}
-          </button>
+          <div key={l} style={{ ...styles.card, borderColor: COLORS[l] || '#2a2f4a' }}>
+            {/* Card header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+              <div>
+                <span style={{ color: COLORS[l], fontWeight: 700, fontSize: 14 }}>
+                  {MODEL_LABELS[l] || `Model ${l}`}
+                </span>
+                {modelNames?.[l] && (
+                  <div style={{ color: '#4a5168', fontSize: 11, marginTop: 2 }}>
+                    {modelNames[l]}
+                  </div>
+                )}
+              </div>
+              <span style={{ color: '#4a5168', fontSize: 12, flexShrink: 0, marginLeft: 12 }}>
+                {proposals[l].split(/\s+/).filter(Boolean).length} words
+              </span>
+            </div>
+
+            {/* Full proposal */}
+            <div style={styles.prose}>
+              <ReactMarkdown>{proposals[l]}</ReactMarkdown>
+            </div>
+          </div>
         ))}
       </div>
-
-      {/* Proposal content */}
-      {proposals[active] && (
-        <div style={styles.card}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
-            <div>
-              <span style={{ color: COLORS[active], fontWeight: 600, fontSize: 13 }}>
-                {MODEL_LABELS[active] || `Version ${active}`}
-              </span>
-              {modelNames?.[active] && (
-                <span style={{ color: '#4a5168', fontSize: 11, marginLeft: 8 }}>
-                  {modelNames[active]}
-                </span>
-              )}
-            </div>
-            <span style={{ color: '#4a5168', fontSize: 12 }}>
-              {proposals[active].split(/\s+/).length} words
-            </span>
-          </div>
-          <div style={styles.prose}>
-            <ReactMarkdown>{proposals[active]}</ReactMarkdown>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
@@ -79,17 +62,12 @@ function Empty({ message }) {
 
 const styles = {
   heading: { fontSize: 18, fontWeight: 700, marginBottom: 6, color: '#e2e8f0' },
-  sub: { fontSize: 13, color: '#8892b0', marginBottom: 20 },
-  tab: {
-    padding: '6px 14px', borderRadius: 6, border: 'none',
-    cursor: 'pointer', fontSize: 13, fontWeight: 500, transition: 'background 0.15s',
-  },
+  sub: { fontSize: 13, color: '#8892b0', marginBottom: 24 },
   card: {
-    background: '#161b2e', border: '1px solid #2a2f4a',
+    background: '#161b2e', border: '1px solid',
     borderRadius: 10, padding: 20,
   },
   prose: {
     fontSize: 14, lineHeight: 1.7, color: '#cbd5e1',
-    '& p': { marginBottom: '1em' },
   },
 }
