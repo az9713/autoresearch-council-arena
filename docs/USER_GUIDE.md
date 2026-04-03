@@ -109,16 +109,36 @@ This is useful for:
 
 Each `bash start.sh` automatically clears all state from the previous run (`results.tsv`, `events.jsonl`, `critique.md`, `winning_proposal.md`). You get a clean slate every time.
 
-The only thing that persists is `artifact.md` — the system always starts from whatever version is currently in that file. To also reset the artifact to the original weak draft:
+The only thing that persists is `artifact.md` — the system always starts from whatever version is currently in that file.
+
+#### Restoring the original weak draft
+
+The initial weak draft is stored in the very first git commit. To restore it:
 
 ```bash
-# Reset artifact to the initial commit's version
-git log --oneline | tail -1   # find the initial commit hash
-git checkout <initial-hash> -- artifact.md
+# Step 1 — find the initial commit hash (it's always the last line)
+git log --oneline | tail -1
+# Example output: f346ae2 Initial commit: autoresearch-council-arena
 
-# Then restart normally
+# Step 2 — restore artifact.md from that commit
+git checkout f346ae2 -- artifact.md
+
+# Step 3 — start the run
 bash start.sh
 ```
+
+The weak draft is deliberately low-quality — vague, generic, no data, no argument structure. Starting from it gives the system maximum headroom to improve and produces the most dramatic score arc.
+
+#### Writing your own weak draft
+
+If you change the topic in `program.md`, you should also write a matching weak draft in `artifact.md`. A good weak draft:
+
+- Is technically on-topic but poorly argued
+- Uses generic language ("this is important", "there are challenges")
+- Has no specific evidence, data, or examples
+- Is short (150–300 words)
+
+The weaker the starting point, the more KEEPs you'll see in the first 10–20 iterations.
 
 ---
 
