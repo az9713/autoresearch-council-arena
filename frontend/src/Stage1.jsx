@@ -21,18 +21,23 @@ export default function Stage1({ proposals, modelNames }) {
     <div>
       <h2 style={styles.heading}>Stage 1 — Competing Proposals</h2>
       <p style={styles.sub}>
-        {letters.length} models proposed improvements in parallel. Their labels are shuffled anonymously in Stage 2 to prevent bias.
+        {letters.length} model{letters.length !== 1 ? 's' : ''} proposed improvements in parallel — click each tab to read their full proposal.
+        Labels are shuffled anonymously in Stage 2 to prevent positional bias.
       </p>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: 6, marginBottom: 20 }}>
+      <div style={{ display: 'flex', gap: 6, marginBottom: 20, flexWrap: 'wrap' }}>
         {letters.map(l => (
           <button key={l} onClick={() => setActive(l)} style={{
             ...styles.tab,
             background: active === l ? COLORS[l] : '#1e2438',
             color: active === l ? '#fff' : '#8892b0',
+            outline: active === l ? 'none' : `1px solid #2a2f4a`,
+            transform: active === l ? 'none' : 'none',
+            opacity: 1,
           }}>
             {MODEL_LABELS[l] || `Model ${l}`}
+            {active !== l && <span style={{ fontSize: 10, marginLeft: 5, opacity: 0.5 }}>↗</span>}
           </button>
         ))}
       </div>
