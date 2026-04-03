@@ -153,11 +153,11 @@ The terminal prints your running spend every iteration:
 [run] ===== Iteration 5 | best_score=87 | spent=$0.0823 =====
 ```
 
-The default limit is **$5.00** (~277 iterations). Change it in `config.py`:
+The default limit is **$5.00** (~260 iterations). Change it in `.env`:
 
-```python
-COST_LIMIT_USD = 1.00   # stop after $1 — good for testing
-COST_LIMIT_USD = None   # no limit — runs until Ctrl+C
+```bash
+COST_LIMIT_USD=1.00    # stop after $1 — good for testing
+# remove the line entirely to run until Ctrl+C
 ```
 
 ---

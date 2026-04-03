@@ -29,6 +29,7 @@ MAX_ARTIFACT_WORDS = 3000   # hard-reject proposals exceeding this
 PLATEAU_WINDOW = 10         # warn after this many consecutive DISCARDs
 
 # --- Cost limit ---
-# Stop the experiment loop after spending this many USD (tracked via OpenRouter credits API).
-# Set to None to disable.
-COST_LIMIT_USD: float | None = 5.00
+# Loaded from .env. Set to None to disable.
+_cost_limit_str = os.getenv("COST_LIMIT_USD")
+COST_LIMIT_USD: float | None = float(_cost_limit_str) if _cost_limit_str else None
+

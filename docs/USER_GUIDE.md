@@ -154,12 +154,12 @@ Cost is printed in every iteration header:
 
 The running spend is calculated from your actual OpenRouter credit balance — not an estimate. The loop stops automatically when `spent >= COST_LIMIT_USD` (default $5.00).
 
-To change the limit, edit `config.py`:
+To change the limit, edit `.env`:
 
-```python
-COST_LIMIT_USD = 1.00    # stop after $1
-COST_LIMIT_USD = 50.00   # stop after $50
-COST_LIMIT_USD = None    # no limit
+```bash
+COST_LIMIT_USD=1.00    # stop after $1
+COST_LIMIT_USD=50.00   # stop after $50
+# remove the line entirely for no limit
 ```
 
 You can also check your balance at any time on the [OpenRouter dashboard](https://openrouter.ai/credits).

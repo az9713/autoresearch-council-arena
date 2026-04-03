@@ -67,19 +67,21 @@ PLATEAU_WINDOW = 10
 
 ### Cost Limit
 
-```python
-COST_LIMIT_USD: float | None = 5.00
+Set in `.env` — no code changes needed:
+
+```bash
+COST_LIMIT_USD=5.00    # stop after $5 (~260 iterations)
+COST_LIMIT_USD=0.10    # stop after $0.10 (~5 iterations, good for testing)
+# Remove or leave blank to run indefinitely (Ctrl+C to stop)
 ```
 
-**`COST_LIMIT_USD`** — stops the experiment loop after spending this many USD. Checked before each iteration using real billing data from `https://openrouter.ai/api/v1/auth/key`.
-
-Set to `None` to run indefinitely (manual Ctrl+C only). Set to a smaller value (e.g., `1.00`) to test the system cheaply before a long run.
+**`COST_LIMIT_USD`** — stops the experiment loop after spending this many USD. Checked before each iteration using real billing data from the OpenRouter API (`/api/v1/auth/key` usage field).
 
 **How it works:**
-1. At startup, `run.py` queries the initial credit balance.
-2. Before each iteration, it queries the current balance.
-3. If `initial - current >= COST_LIMIT_USD`, the loop exits cleanly.
-4. If the balance API is unavailable, the limit is silently skipped for that iteration.
+1. At startup, `run.py` reads the current cumulative usage from OpenRouter.
+2. Before each iteration, it reads the current usage again.
+3. If `current - initial >= COST_LIMIT_USD`, the loop exits cleanly.
+4. If the usage API is unavailable, the limit is silently skipped for that iteration.
 
 ---
 
@@ -159,5 +161,6 @@ If Vite assigns a different port (it increments from 5173 if the port is in use)
 | Variable | Source | Required | Description |
 |----------|--------|----------|-------------|
 | `OPENROUTER_API_KEY` | `.env` | Yes | OpenRouter API key |
+| `COST_LIMIT_USD` | `.env` | No | Stop after this many USD spent (blank = no limit) |
 
 All other settings are in `config.py` (Python constants, not environment variables).

@@ -143,7 +143,7 @@ OPENROUTER_API_KEY=sk-or-v1-...
 | `EXPERIMENT_TIMEOUT` | `300` | Wall-clock budget per iteration (seconds) |
 | `MAX_ARTIFACT_WORDS` | `3000` | Hard cap — proposals over this fall back to E |
 | `PLATEAU_WINDOW` | `10` | Consecutive DISCARDs before plateau warning |
-| `COST_LIMIT_USD` | `5.00` | Stop when this much has been spent (`None` = no limit) |
+| `COST_LIMIT_USD` | `5.00` | Stop when this much has been spent (set in `.env`, blank = no limit) |
 
 ### Model Selection
 
