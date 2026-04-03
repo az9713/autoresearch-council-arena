@@ -153,6 +153,12 @@ def main() -> None:
         print(f"[run] Cost limit: ${COST_LIMIT_USD:.2f} USD", flush=True)
 
     git_setup(run_tag)
+
+    # Clean slate: wipe all accumulated state from previous runs.
+    for stale in [TSV_FILE, EVENTS_FILE, Path("critique.md"), Path("winning_proposal.md")]:
+        stale.unlink(missing_ok=True)
+    print("[run] State cleared — clean run.", flush=True)
+
     init_results_tsv()
 
     # Snapshot starting usage for cost tracking
@@ -162,8 +168,7 @@ def main() -> None:
     else:
         print("[run] Warning: could not read usage — cost limit won't be enforced", flush=True)
 
-    # events.jsonl is a persistent append-only log — do NOT clear it between runs.
-    # Emit a run_start marker so each run is identifiable in the log.
+    # Emit run_start marker into the freshly cleared events.jsonl.
     _emit_event({
         "type": "run_start",
         "run_tag": run_tag,

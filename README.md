@@ -118,7 +118,7 @@ autoresearch-council-arena/
 
 | File | Committed | Description |
 |------|-----------|-------------|
-| `events.jsonl` | No | Append-only log — stage events (evaluate.py) + run/iteration events (run.py); persists across runs |
+| `events.jsonl` | No | Append-only log within a run — stage events (evaluate.py) + run/iteration events (run.py); cleared on each restart |
 | `run.log` | No | Human-readable terminal output from the last `bash start.sh`; overwritten each restart |
 | `winning_proposal.md` | No | Latest winning proposal (read by `run.py` on KEEP) |
 | `critique.md` | **Yes** | Chairman critique — committed on KEEP and fed back into Stage 1 next iteration |

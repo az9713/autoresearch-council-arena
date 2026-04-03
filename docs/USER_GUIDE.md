@@ -107,16 +107,16 @@ This is useful for:
 
 ### Starting Fresh
 
-To reset the experiment completely:
+Each `bash start.sh` automatically clears all state from the previous run (`results.tsv`, `events.jsonl`, `critique.md`, `winning_proposal.md`). You get a clean slate every time.
+
+The only thing that persists is `artifact.md` — the system always starts from whatever version is currently in that file. To also reset the artifact to the original weak draft:
 
 ```bash
-# Check out the initial artifact
-git checkout f346ae2 -- artifact.md   # use your initial commit hash
+# Reset artifact to the initial commit's version
+git log --oneline | tail -1   # find the initial commit hash
+git checkout <initial-hash> -- artifact.md
 
-# Clear experiment state
-rm -f results.tsv events.jsonl critique.md winning_proposal.md
-
-# Restart
+# Then restart normally
 bash start.sh
 ```
 

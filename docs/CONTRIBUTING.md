@@ -63,7 +63,7 @@ def _emit_event(event: dict) -> None:
         f.write(json.dumps(event) + "\n")
 ```
 
-`events.jsonl` is **append-only across runs** — never cleared. Each run emits a `run_start` marker at startup and `iteration_result` after each KEEP/DISCARD (from `run.py`). Stage events (`stage1_complete`, `stage2_complete`, `stage3_complete`) come from `evaluate.py`.
+`events.jsonl` is **cleared at startup** (along with `results.tsv`, `critique.md`, `winning_proposal.md`) so every `bash start.sh` is a clean slate. Within a run it is append-only. Each run emits a `run_start` marker and `iteration_result` events (from `run.py`); stage events (`stage1_complete`, `stage2_complete`, `stage3_complete`) come from `evaluate.py`.
 
 Event types consumed by `backend/server.py` are forwarded to the frontend via SSE. If you add a new event type, update `App.jsx` to handle it. `run_start` and `iteration_result` events are not forwarded to the frontend (they are run-level, not stage-level).
 
@@ -146,6 +146,6 @@ The backend allows `localhost:5173` and `127.0.0.1:5173` only. If Vite runs on a
 ## Known Limitations
 
 - **No authentication.** The backend is local-only and has no auth. Do not expose port 8001 publicly.
-- **`events.jsonl` grows indefinitely.** It is append-only across all runs and never rotated. The SSE server tails from the current position at connect time, so it stays fast regardless of file size — but the file will grow over many long runs. Delete it manually to reset if needed (the system will recreate it).
+- **`events.jsonl` is cleared on each restart.** Any post-run analysis must happen before the next `bash start.sh`. Copy `events.jsonl` and `results.tsv` elsewhere if you want to preserve a run's data.
 - **Stage 2 proposals are truncated to 500 chars in events.** The full text is only available in `winning_proposal.md` (winner only) or by re-running `evaluate.py`.
 - **Single run per directory.** Running two experiment loops in the same directory simultaneously will corrupt `events.jsonl` and `results.tsv`. Use separate directories for parallel experiments.

@@ -228,7 +228,7 @@ The React frontend is intentionally minimal (no build-time framework, no routing
 
 JSONL append is atomic per-line on all modern OS/filesystems for writes under 4KB (each event is well under this). No Redis, no pub/sub infrastructure, no daemon. The SSE server's 2-second poll latency is acceptable for a system where each iteration takes 1-5 minutes.
 
-`events.jsonl` is append-only across runs — it is never cleared. Each run emits a `run_start` marker so sessions are identifiable in the log. `run.py` also emits `iteration_result` events after each KEEP/DISCARD, making the file a complete machine-readable run history (complementing the human-readable `run.log` created by `tee` in `start.sh`).
+`events.jsonl` is cleared at the start of each run (along with `results.tsv`, `critique.md`, and `winning_proposal.md`) so every `bash start.sh` is a clean slate. Within a run it is append-only. `run.py` emits `run_start` at startup and `iteration_result` after each KEEP/DISCARD, making it a complete machine-readable run log (complementing the human-readable `run.log` created by `tee` in `start.sh`).
 
 ### Why fork `evaluate.py` as a subprocess?
 
