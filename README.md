@@ -199,6 +199,7 @@ Claude Haiku (council B) is the most expensive model in the lineup — it domina
 |----------|-------------|
 | [docs/QUICKSTART.md](docs/QUICKSTART.md) | Step-by-step setup and first quick wins |
 | [docs/USER_GUIDE.md](docs/USER_GUIDE.md) | Dashboard walkthrough, steering, long runs, custom topics |
+| [docs/MONITORING.md](docs/MONITORING.md) | Reading the dashboard signals, score patterns, when to act |
 | [docs/MODELS.md](docs/MODELS.md) | Model lineup, roles, pricing, conflict rules, swapping guide |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Data flow, component map, design decisions |
 | [docs/API_REFERENCE.md](docs/API_REFERENCE.md) | All REST endpoints and SSE event types |
