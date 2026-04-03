@@ -108,8 +108,12 @@ def extract_metric(log_text: str, key: str) -> str | None:
 # Cost tracking via OpenRouter credits API
 # ---------------------------------------------------------------------------
 
-def get_openrouter_credit_balance() -> float | None:
-    """Return remaining USD credit balance from OpenRouter, or None on failure."""
+def get_openrouter_usage() -> float | None:
+    """Return cumulative USD usage from OpenRouter, or None on failure.
+
+    Works for both limited keys (limit set) and unlimited keys (limit=null).
+    Tracks the 'usage' field — cumulative spend since key creation.
+    """
     try:
         r = httpx.get(
             "https://openrouter.ai/api/v1/auth/key",
@@ -118,15 +122,10 @@ def get_openrouter_credit_balance() -> float | None:
         )
         r.raise_for_status()
         data = r.json().get("data", {})
-        # 'limit' is total credits, 'usage' is spent so far (both in USD)
-        limit = data.get("limit")
-        usage = data.get("usage", 0)
-        if limit is not None:
-            return float(limit) - float(usage)
-        # Some key types return only 'usage'
-        return None
+        usage = data.get("usage")
+        return float(usage) if usage is not None else None
     except Exception as e:
-        print(f"[run] Could not fetch credit balance: {e}", flush=True)
+        print(f"[run] Could not fetch usage: {e}", flush=True)
         return None
 
 
@@ -146,12 +145,12 @@ def main() -> None:
     # Clear stale events file
     Path("events.jsonl").write_text("", encoding="utf-8")
 
-    # Snapshot starting credit balance for cost tracking
-    initial_balance: float | None = get_openrouter_credit_balance()
-    if initial_balance is not None:
-        print(f"[run] Starting credit balance: ${initial_balance:.4f}", flush=True)
+    # Snapshot starting usage for cost tracking
+    initial_usage: float | None = get_openrouter_usage()
+    if initial_usage is not None:
+        print(f"[run] Starting usage: ${initial_usage:.4f} (cumulative)", flush=True)
     else:
-        print("[run] Warning: could not read credit balance — cost limit won't be enforced", flush=True)
+        print("[run] Warning: could not read usage — cost limit won't be enforced", flush=True)
 
     best_score: int = 0
     iteration: int = 0
@@ -160,10 +159,10 @@ def main() -> None:
         iteration += 1
 
         # --- Cost limit check ---
-        if COST_LIMIT_USD and initial_balance is not None:
-            current_balance = get_openrouter_credit_balance()
-            if current_balance is not None:
-                spent = initial_balance - current_balance
+        if COST_LIMIT_USD and initial_usage is not None:
+            current_usage = get_openrouter_usage()
+            if current_usage is not None:
+                spent = current_usage - initial_usage
                 if spent >= COST_LIMIT_USD:
                     print(f"\n[run] COST LIMIT REACHED: ${spent:.4f} spent (limit ${COST_LIMIT_USD:.2f}). Stopping.", flush=True)
                     break
