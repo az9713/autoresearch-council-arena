@@ -25,6 +25,8 @@ import httpx
 
 from config import EXPERIMENT_TIMEOUT, IMPROVEMENT_THRESHOLD, PLATEAU_WINDOW, OPENROUTER_API_KEY, COST_LIMIT_USD
 
+STOP_FLAG = Path("stop.flag")
+
 # ---------------------------------------------------------------------------
 # Git helpers
 # ---------------------------------------------------------------------------
@@ -155,7 +157,7 @@ def main() -> None:
     git_setup(run_tag)
 
     # Clean slate: wipe all accumulated state from previous runs.
-    for stale in [TSV_FILE, EVENTS_FILE, Path("critique.md"), Path("winning_proposal.md")]:
+    for stale in [TSV_FILE, EVENTS_FILE, STOP_FLAG, Path("critique.md"), Path("winning_proposal.md")]:
         stale.unlink(missing_ok=True)
     print("[run] State cleared — clean run.", flush=True)
 
@@ -181,9 +183,36 @@ def main() -> None:
     iteration: int = 0
 
     spent: float = 0.0  # cumulative spend this run
+    stop_reason: str = "interrupted"  # default if KeyboardInterrupt
 
-    while True:  # NEVER STOP
+    def graceful_exit(reason: str) -> None:
+        """Emit run_end event, print summary, clean up stop flag."""
+        labels = {
+            "plateau":       f"[run] PLATEAU: {PLATEAU_WINDOW} consecutive DISCARDs — self-terminating.",
+            "stop_requested": "[run] STOP requested — finishing current iteration and exiting.",
+            "cost_limit":    f"[run] COST LIMIT REACHED: ${spent:.4f} spent (limit ${COST_LIMIT_USD:.2f}).",
+            "interrupted":   "[run] Interrupted by user.",
+        }
+        print(labels.get(reason, f"[run] Stopping: {reason}"), flush=True)
+        _emit_event({
+            "type": "run_end",
+            "reason": reason,
+            "iteration": iteration,
+            "best_score": best_score,
+            "spent_usd": round(spent, 6),
+            "timestamp": datetime.utcnow().isoformat() + "Z",
+        })
+        STOP_FLAG.unlink(missing_ok=True)
+        print(f"[run] Run complete. Iterations: {iteration} | Best score: {best_score} | Spent: ${spent:.4f}", flush=True)
+
+    while True:
         iteration += 1
+
+        # --- Stop-flag check (set by POST /api/stop from the UI) ---
+        if STOP_FLAG.exists():
+            stop_reason = "stop_requested"
+            graceful_exit(stop_reason)
+            break
 
         # --- Cost limit check ---
         if COST_LIMIT_USD and initial_usage is not None:
@@ -191,7 +220,8 @@ def main() -> None:
             if current_usage is not None:
                 spent = current_usage - initial_usage
                 if spent >= COST_LIMIT_USD:
-                    print(f"\n[run] COST LIMIT REACHED: ${spent:.4f} spent (limit ${COST_LIMIT_USD:.2f}). Stopping.", flush=True)
+                    stop_reason = "cost_limit"
+                    graceful_exit(stop_reason)
                     break
                 print(f"\n[run] ===== Iteration {iteration} | best_score={best_score} | spent=${spent:.4f} =====", flush=True)
             else:
@@ -281,12 +311,13 @@ def main() -> None:
             "timestamp": datetime.utcnow().isoformat() + "Z",
         })
 
-        # --- Plateau detection ---
+        # --- Plateau detection: self-terminate after PLATEAU_WINDOW consecutive DISCARDs ---
         recent = recent_statuses(PLATEAU_WINDOW)
         if len(recent) >= PLATEAU_WINDOW and all(s == "DISCARD" for s in recent):
-            msg = f"[run] PLATEAU: last {PLATEAU_WINDOW} iterations all DISCARD. Consider editing program.md to try new directions."
-            print(msg, flush=True)
-            append_result("none", None, "PLATEAU", msg)
+            append_result("none", None, "PLATEAU", f"last {PLATEAU_WINDOW} iterations all DISCARD")
+            stop_reason = "plateau"
+            graceful_exit(stop_reason)
+            break
 
         # --- API failure guard: back off if all recent runs failed ---
         recent_statuses_list = recent_statuses(3)
@@ -302,3 +333,5 @@ if __name__ == "__main__":
         main()
     except KeyboardInterrupt:
         print("\n[run] Interrupted by user. Experiment loop stopped.", flush=True)
+        # graceful_exit is not called here — KeyboardInterrupt may fire mid-iteration
+        # where state is inconsistent. The run_end event was not emitted; that is acceptable.

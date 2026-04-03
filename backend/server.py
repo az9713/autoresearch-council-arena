@@ -33,7 +33,7 @@ app = FastAPI(title="autoresearch-council-arena")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
-    allow_methods=["GET"],
+    allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
 
@@ -41,6 +41,7 @@ ROOT = Path(__file__).parent.parent
 RESULTS_FILE = ROOT / "results.tsv"
 ARTIFACT_FILE = ROOT / "artifact.md"
 EVENTS_FILE = ROOT / "events.jsonl"
+STOP_FLAG = ROOT / "stop.flag"
 
 
 # ---------------------------------------------------------------------------
@@ -116,6 +117,14 @@ async def get_artifact():
 @app.get("/api/history")
 async def get_history():
     return git_log()
+
+
+@app.post("/api/stop")
+async def stop_run():
+    """Write stop.flag — run.py checks for this at the start of each iteration
+    and exits gracefully after the current iteration completes."""
+    STOP_FLAG.write_text("stop", encoding="utf-8")
+    return {"status": "stop_requested"}
 
 
 @app.get("/api/stream")

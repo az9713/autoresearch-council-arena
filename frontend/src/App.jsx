@@ -18,6 +18,8 @@ export default function App() {
   const [stage2Data, setStage2Data] = useState(null)
   const [stage3Data, setStage3Data] = useState(null)
   const [activeTab, setActiveTab] = useState('artifact')
+  const [stopping, setStopping] = useState(false)
+  const [runEnded, setRunEnded] = useState(null)  // { reason, iteration, best_score }
 
   const eventSourceRef = useRef(null)
 
@@ -59,6 +61,9 @@ export default function App() {
         } else if (event.type === 'stage3_complete') {
           setStage3Data(event)
           setActiveTab('stage3')
+        } else if (event.type === 'run_end') {
+          setRunEnded(event)
+          setStopping(false)
         }
       } catch (_) {}
     }
@@ -68,6 +73,15 @@ export default function App() {
 
   const keeps = results.filter(r => r.status === 'KEEP')
   const discards = results.filter(r => r.status === 'DISCARD')
+
+  async function handleStop() {
+    setStopping(true)
+    try {
+      await fetch(`${API}/api/stop`, { method: 'POST' })
+    } catch (_) {
+      setStopping(false)
+    }
+  }
 
   return (
     <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
@@ -90,8 +104,40 @@ export default function App() {
 
         <ResultsChart results={results} />
 
-        <div style={{ marginTop: 'auto', fontSize: 11, color: '#4a5168' }}>
-          Autoresearch × LLM Council
+        <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {runEnded ? (
+            <div style={{
+              padding: '8px 10px', borderRadius: 6, fontSize: 11, lineHeight: 1.5,
+              background: runEnded.reason === 'plateau' ? '#1e2a1e' : '#1e1e2a',
+              border: `1px solid ${runEnded.reason === 'plateau' ? '#2d5a2d' : '#3a3a6a'}`,
+              color: runEnded.reason === 'plateau' ? '#86efac' : '#a5b4fc',
+            }}>
+              <div style={{ fontWeight: 700, marginBottom: 2 }}>
+                {runEnded.reason === 'plateau' && 'Plateau — run ended'}
+                {runEnded.reason === 'stop_requested' && 'Stopped by user'}
+                {runEnded.reason === 'cost_limit' && 'Cost limit reached'}
+              </div>
+              <div style={{ color: '#6b7280' }}>
+                {runEnded.iteration} iterations · best {runEnded.best_score}/100
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={handleStop}
+              disabled={stopping}
+              style={{
+                padding: '7px 0', borderRadius: 6, border: '1px solid #5a2020',
+                background: stopping ? '#1e1e1e' : '#2a1515',
+                color: stopping ? '#4a5168' : '#f87171',
+                fontSize: 12, fontWeight: 600, cursor: stopping ? 'default' : 'pointer',
+              }}
+            >
+              {stopping ? 'Stopping after this iteration…' : 'Stop Run'}
+            </button>
+          )}
+          <div style={{ fontSize: 11, color: '#4a5168' }}>
+            Autoresearch × LLM Council
+          </div>
         </div>
       </aside>
 
