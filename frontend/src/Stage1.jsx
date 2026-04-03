@@ -21,7 +21,7 @@ export default function Stage1({ proposals }) {
     <div>
       <h2 style={styles.heading}>Stage 1 — Competing Proposals</h2>
       <p style={styles.sub}>
-        {letters.length} models proposed improvements in parallel. Anonymous in Stage 2.
+        {letters.length} models proposed improvements in parallel. Their labels are shuffled anonymously in Stage 2 to prevent bias.
       </p>
 
       {/* Tabs */}
