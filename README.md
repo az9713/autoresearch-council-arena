@@ -18,7 +18,7 @@ The demo topic — *"Autoresearch + LLM Council is the simplest, cheapest way to
 We ran the system for **48 real iterations** on a live tutorial-writing task — a step-by-step guide on building a minimal LLM evaluation loop in Python. The council improved the tutorial autonomously from a deliberately weak starting draft, with no human intervention between iterations.
 
 <!-- demo video — replace URL after opening a GitHub issue to host the asset -->
-> **[▶ Watch the demo](https://github.com/user-attachments/assets/3cb66647-6a81-469e-91e6-868d1d5362aa)**
+<video src="https://github.com/user-attachments/assets/3cb66647-6a81-469e-91e6-868d1d5362aa" controls width="100%"></video>
 
 **Highlights:**
 - 2 KEEPs in the first 11 iterations before a network outage interrupted the run
