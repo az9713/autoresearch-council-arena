@@ -13,6 +13,29 @@ The demo topic — *"Autoresearch + LLM Council is the simplest, cheapest way to
 
 ---
 
+## Experiment: 48 Iterations in the Wild
+
+We ran the system for **48 real iterations** on a live tutorial-writing task — a step-by-step guide on building a minimal LLM evaluation loop in Python. The council improved the tutorial autonomously from a deliberately weak starting draft, with no human intervention between iterations.
+
+<!-- demo video — replace URL after opening a GitHub issue to host the asset -->
+> **[▶ Watch the demo (compressed MP4 — placeholder URL)](https://github.com/az9713/autoresearch-council-arena/issues/1)**
+
+**Highlights:**
+- 2 KEEPs in the first 11 iterations before a network outage interrupted the run
+- Sub-score breakdown (Correctness / Completeness / Clarity / Code Quality / Depth) tracked per iteration
+- Council models consistently ranked new proposals above the baseline (E avg_pos 3.5–4.0) yet the chairman scored them 88–92 — revealing a **score anchoring problem** that led to the multi-dimensional scoring redesign
+- Total cost for 11 substantive iterations: **$0.30** (~$0.028/iteration)
+
+**Post-mortem and analysis:**
+
+| Report | Contents |
+|--------|----------|
+| [docs/RUN_ANALYSIS.md](docs/RUN_ANALYSIS.md) | Full iteration-by-iteration statistics, sub-score table, what worked, what didn't, root cause analysis, and suggested fixes |
+| [docs/TASK_DESIGN.md](docs/TASK_DESIGN.md) | Why the tutorial task was chosen over a persuasive essay, how orthogonal scoring dimensions enable progressive improvement, and starting artifact calibration |
+| [docs/ARCHITECTURE.md#why-multi-dimensional-scoring](docs/ARCHITECTURE.md) | The chairman anchoring problem — why a single 1–100 score creates a ceiling, and how per-dimension sub-scores fix it |
+
+---
+
 ## How It Works
 
 ```
