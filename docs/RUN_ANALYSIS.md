@@ -1,6 +1,6 @@
 # Run Analysis — 2026-04-03
 
-Analysis of run `20260403_142816`. 11 successful iterations followed by network failure (iterations 12–22).
+Analysis of run `20260403_142816`. 11 successful iterations, a mid-run network outage (iterations 12–22), recovery, and self-termination via plateau detection at iteration 48.
 
 ---
 
@@ -121,6 +121,40 @@ if result.returncode != 0:
    - "Add inline comments explaining non-obvious code decisions"
 
 5. **Replace Model B (Claude Haiku)** — zero wins across all runs on this task. Candidates: `deepseek/deepseek-chat-v3-0324` or `mistralai/mistral-small-3.2-24b-instruct`.
+
+---
+
+## Why the Run Stopped at Iteration 48
+
+The run self-terminated cleanly via **plateau detection** — not a crash, not a manual stop, not the cost limit.
+
+After the network recovered (post-iteration 22), the loop continued running. By iteration 48 the system had accumulated 10 consecutive DISCARDs. This triggered the plateau guard in `run.py`:
+
+```python
+recent = recent_statuses(PLATEAU_WINDOW)   # PLATEAU_WINDOW = 10
+if len(recent) >= PLATEAU_WINDOW and all(s == "DISCARD" for s in recent):
+    graceful_exit("plateau")
+    break
+```
+
+`graceful_exit("plateau")` emitted a `run_end` event to `events.jsonl`, cleaned up `stop.flag`, and printed the final summary. The UI displayed the **"Plateau — run ended"** banner in the sidebar.
+
+**Final state at termination:**
+
+| Metric | Value |
+|--------|-------|
+| Total iterations | 48 |
+| KEEPs | 3 |
+| DISCARDs | 23+ (final 10 consecutive) |
+| CRASHes | ~11 (network outage, iterations 12–22) |
+| Best score | 96 / 100 |
+| Final sub-scores | CORRECTNESS 18 · COMPLETENESS 19 · CLARITY 18 · CODE_QUALITY 17 · DEPTH 18 |
+
+**Why 10 consecutive DISCARDs?**
+
+By iteration 38+ the artifact had reached a score of 96/100 with all five dimensions scoring 17–19/20. The council consistently generated proposals scoring 90–95 — genuinely good tutorials, but not better than the current artifact by more than `IMPROVEMENT_THRESHOLD = 1`. With CORRECTNESS and COMPLETENESS effectively maxed, the remaining headroom was in CLARITY, CODE_QUALITY, and DEPTH — dimensions where the chairman's criteria are harder to satisfy with small targeted changes.
+
+This is the correct, expected behavior. Plateau detection exists precisely for this situation: the system has found a strong local maximum and further iteration is unlikely to improve it. The right response is to restart with a harder constraint, a different exploration direction, or a new starting artifact.
 
 ---
 

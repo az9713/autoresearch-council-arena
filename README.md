@@ -25,10 +25,11 @@ We ran the system for **48 real iterations** on a live tutorial-writing task —
 ![Final round — Stage 3 Chairman's Verdict, iteration 49, score 96/100](docs/final_round.jpg)
 
 **Highlights:**
-- 2 KEEPs in the first 11 iterations before a network outage interrupted the run
-- Sub-score breakdown (Correctness / Completeness / Clarity / Code Quality / Depth) tracked per iteration
-- Council models consistently ranked new proposals above the baseline (E avg_pos 3.5–4.0) yet the chairman scored them 88–92 — revealing a **score anchoring problem** that led to the multi-dimensional scoring redesign
-- Total cost for 11 substantive iterations: **$0.30** (~$0.028/iteration)
+- **48 iterations**, 3 KEEPs, best score **96/100** — run self-terminated via plateau detection (10 consecutive DISCARDs)
+- Mid-run network outage (iterations 12–22) recovered automatically; the loop continued without intervention
+- Sub-score breakdown (Correctness / Completeness / Clarity / Code Quality / Depth) tracked per iteration — all five dimensions reached 17–19/20 at termination
+- Council models consistently ranked new proposals above the baseline yet the chairman scored them lower — revealing a **score anchoring problem** that led to the multi-dimensional scoring redesign
+- Total cost: **~$0.30** for 11 substantive pre-outage iterations (~$0.028/iteration)
 
 **Post-mortem and analysis:**
 
