@@ -113,17 +113,10 @@ The only thing that persists is `artifact.md` — the system always starts from 
 
 #### Restoring the original weak draft
 
-The initial weak draft is stored in the very first git commit. To restore it:
+A copy of the original weak draft is kept in `artifact_initial.md`. To restore it:
 
 ```bash
-# Step 1 — find the initial commit hash (it's always the last line)
-git log --oneline | tail -1
-# Example output: f346ae2 Initial commit: autoresearch-council-arena
-
-# Step 2 — restore artifact.md from that commit
-git checkout f346ae2 -- artifact.md
-
-# Step 3 — start the run
+cp artifact_initial.md artifact.md
 bash start.sh
 ```
 

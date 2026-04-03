@@ -96,6 +96,7 @@ autoresearch-council-arena/
 ├── config.py           # Models, thresholds, cost limit
 ├── program.md          # Human control point: topic, audience, evaluation criteria
 ├── artifact.md         # Current best version (auto-updated on KEEP)
+├── artifact_initial.md # Reference copy of the original weak draft — restore with: cp artifact_initial.md artifact.md
 │
 ├── backend/
 │   └── server.py       # FastAPI SSE server
