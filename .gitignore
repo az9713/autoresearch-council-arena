@@ -12,5 +12,4 @@ winning_proposal.md
 .DS_Store
 *.swp
 *.swo
-events.jsonl
 results.tsv

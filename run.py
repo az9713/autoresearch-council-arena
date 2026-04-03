@@ -14,6 +14,7 @@ Key adaptation from base autoresearch:
   so we commit AFTER the winner is selected. Branch tip still always equals best-so-far.
 """
 
+import json
 import subprocess
 import sys
 import time
@@ -130,6 +131,18 @@ def get_openrouter_usage() -> float | None:
 
 
 # ---------------------------------------------------------------------------
+# Event log (mirrors evaluate.py's _emit_event — appends to events.jsonl)
+# ---------------------------------------------------------------------------
+
+EVENTS_FILE = Path("events.jsonl")
+
+def _emit_event(event: dict) -> None:
+    """Append a JSON event to events.jsonl. This file is the persistent run log."""
+    with EVENTS_FILE.open("a", encoding="utf-8") as f:
+        f.write(json.dumps(event) + "\n")
+
+
+# ---------------------------------------------------------------------------
 # Main loop
 # ---------------------------------------------------------------------------
 
@@ -142,9 +155,6 @@ def main() -> None:
     git_setup(run_tag)
     init_results_tsv()
 
-    # Clear stale events file
-    Path("events.jsonl").write_text("", encoding="utf-8")
-
     # Snapshot starting usage for cost tracking
     initial_usage: float | None = get_openrouter_usage()
     if initial_usage is not None:
@@ -152,8 +162,20 @@ def main() -> None:
     else:
         print("[run] Warning: could not read usage — cost limit won't be enforced", flush=True)
 
+    # events.jsonl is a persistent append-only log — do NOT clear it between runs.
+    # Emit a run_start marker so each run is identifiable in the log.
+    _emit_event({
+        "type": "run_start",
+        "run_tag": run_tag,
+        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "cost_limit_usd": COST_LIMIT_USD,
+        "initial_usage_usd": initial_usage,
+    })
+
     best_score: int = 0
     iteration: int = 0
+
+    spent: float = 0.0  # cumulative spend this run
 
     while True:  # NEVER STOP
         iteration += 1
@@ -240,6 +262,19 @@ def main() -> None:
             print(f"[run] DISCARD — score {score} vs best {best_score} ({reason})", flush=True)
 
         append_result(commit, score, status, f"Iter {iteration} winner={winner}")
+
+        # Emit iteration result to persistent event log
+        _emit_event({
+            "type": "iteration_result",
+            "iteration": iteration,
+            "status": status,
+            "council_score": score,
+            "winner": winner,
+            "best_score": best_score,
+            "commit": commit,
+            "spent_usd": round(spent, 6),
+            "timestamp": datetime.utcnow().isoformat() + "Z",
+        })
 
         # --- Plateau detection ---
         recent = recent_statuses(PLATEAU_WINDOW)

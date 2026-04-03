@@ -53,8 +53,10 @@ echo "========================================"
 echo ""
 
 # Start experiment loop (foreground — Ctrl+C to stop everything)
+# All output is tee'd to run.log for post-run inspection
 echo "[start] Starting experiment loop (Ctrl+C to stop)..."
-uv run python run.py
+echo "[start] Logging to run.log"
+uv run python run.py 2>&1 | tee run.log
 
 # Cleanup on exit
 kill $BACKEND_PID $FRONTEND_PID 2>/dev/null || true
