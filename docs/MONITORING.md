@@ -146,9 +146,10 @@ The second DISCARD variant — `winner=E` — means the chairman judged the curr
 ### Warning Signals
 
 ```
-[run] PLATEAU: last 10 iterations all DISCARD. Consider editing program.md...
+[run] PLATEAU: 10 consecutive DISCARDs — self-terminating.
+[run] Run complete. Iterations: 22 | Best score: 87 | Spent: $0.4180
 ```
-**Act immediately.** Open `program.md` and add 3–4 new Exploration Directions. Restart the loop.
+The loop **self-terminates** after a plateau — no action needed to stop it. Edit `program.md` with 3–4 new Exploration Directions, then restart with `bash start.sh`.
 
 ```
 [run] 3 consecutive failures — sleeping 60s before retry
@@ -253,7 +254,7 @@ jq 'select(.type == "stage3_complete") | .critique' events.jsonl
 
 | Signal | Where to see it | Action |
 |--------|----------------|--------|
-| 10+ consecutive DISCARDs | Terminal / sidebar ratio | Edit `program.md` Exploration Directions |
+| 10 consecutive DISCARDs | Terminal / sidebar ratio | Run self-terminates — edit `program.md`, restart |
 | Critique repeating same feedback | Stage 3 critique | Add that direction explicitly to `program.md` |
 | Version E winning Stage 2 repeatedly | Stage 2 bar chart | Try radically different approaches in `program.md` |
 | Score stuck below 60 after 20 iterations | Score chart / sidebar | Rewrite `artifact.md` with a stronger starting draft |

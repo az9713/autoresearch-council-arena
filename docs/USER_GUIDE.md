@@ -75,11 +75,11 @@ A **DISCARD is not a failure** — it means the system tried something and it di
 - **Exploration Directions** — specific strategies for models to try
 
 **When to edit it:**
-- When the system plateaus (10+ consecutive DISCARDs)
+- After a plateau (the run self-terminates after 10 consecutive DISCARDs)
 - When the artifact is converging in a direction you don't want
 - When you want to try a completely different approach
 
-Stop the loop, edit `program.md`, restart with `bash start.sh`. The next iteration uses the updated objectives.
+After a plateau, the run has already stopped — just edit `program.md` and restart with `bash start.sh`. The next iteration uses the updated objectives.
 
 **Example: breaking a plateau**
 

@@ -139,9 +139,16 @@ The next iteration will use your new objectives.
 
 ## Stopping
 
-**Ctrl+C** in the terminal stops everything (experiment loop + backend + frontend).
+The run stops automatically when any of these conditions are met:
+- **Cost limit** — `COST_LIMIT_USD` reached (default $5.00)
+- **Plateau** — 10 consecutive DISCARDs with no improvement
+- **Stop button** — click **Stop Run** in the dashboard sidebar
 
-The experiment state is preserved: `artifact.md` holds the best version, `results.tsv` has the full log, and git has every KEEP committed. Re-run `bash start.sh` to continue from where you left off.
+All three paths finish the current iteration cleanly before exiting, so logs and git state are always consistent.
+
+**Ctrl+C** in the terminal is an immediate kill (backend + frontend stop too). Use the Stop button or let it self-terminate for a clean exit.
+
+After the run, `artifact.md` holds the best version, `results.tsv` has the full log, and `git log --oneline` shows every KEEP as a commit.
 
 ---
 

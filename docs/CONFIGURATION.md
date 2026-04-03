@@ -67,7 +67,7 @@ Our work is network-bound (LLM API calls). There is no meaningful way to make an
 
 **`MAX_ARTIFACT_WORDS`** — if the winning proposal exceeds this word count, Stage 3 falls back to E (current artifact). Prevents the system from producing unmanageably long outputs. Default 3000 is generous; adjust to match your `program.md` word limit.
 
-**`PLATEAU_WINDOW`** — number of consecutive DISCARDs before printing a plateau warning. This is informational only — the loop does not stop or change behavior. When a plateau is detected, consider editing `program.md` to introduce new exploration directions.
+**`PLATEAU_WINDOW`** — number of consecutive DISCARDs before the loop self-terminates. When this threshold is reached, `run.py` logs the plateau, emits a `run_end` event, and exits gracefully after the current iteration completes. Edit `program.md` with new Exploration Directions and restart with `bash start.sh` to try again.
 
 ### Cost Limit
 

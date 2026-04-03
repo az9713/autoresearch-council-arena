@@ -107,6 +107,27 @@ Returns the last 20 git commits on the current branch.
 
 ---
 
+### `POST /api/stop`
+
+Requests a graceful stop of the experiment loop.
+
+**Response**
+
+```json
+{"status": "stop_requested"}
+```
+
+**Behavior**
+- Writes `stop.flag` to the project root
+- `run.py` checks for this file at the start of each iteration — the current iteration completes fully (logging, git commit if KEEP) before the loop exits
+- The dashboard Stop button calls this endpoint and shows "Stopping after this iteration…" until the `run_end` SSE event arrives
+
+**Notes**
+- Safe to call multiple times — writing the flag is idempotent
+- The flag is deleted automatically on exit and cleared on the next `bash start.sh`
+
+---
+
 ### `GET /api/stream`
 
 Server-Sent Events stream. Pushes new events from `events.jsonl` as they are appended by `evaluate.py`, plus a periodic heartbeat.
@@ -209,6 +230,22 @@ Note: Proposal text is truncated to 500 characters in the event. Full text is on
 - `best_score` — best score after this iteration (updated if KEEP)
 - `commit` — git commit hash (same as previous KEEP for DISCARDs)
 - `spent_usd` — cumulative USD spent this run at time of event
+
+**`run_end`** — emitted by `run.py` when the loop exits gracefully
+
+```jsonc
+{
+  "type": "run_end",
+  "reason": "plateau",       // "plateau" | "stop_requested" | "cost_limit"
+  "iteration": 22,
+  "best_score": 87,
+  "spent_usd": 0.4180,
+  "timestamp": "2026-04-02T18:34:12Z"
+}
+```
+
+- `reason` — why the run ended: `plateau` (10 consecutive DISCARDs), `stop_requested` (Stop button), or `cost_limit`
+- Not emitted on Ctrl+C (process killed before the event can be written)
 
 **`heartbeat`** — sent every 2 seconds
 

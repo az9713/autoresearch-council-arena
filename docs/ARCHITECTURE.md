@@ -171,8 +171,10 @@ This uses real billing data from OpenRouter, not an estimate. Works for both cre
 | `evaluate.py` non-zero exit | Log CRASH, continue |
 | stdout parse failure | Log PARSE_FAILURE, continue |
 | 3 consecutive CRASH/PARSE_FAILURE | Sleep 60s before retry |
-| Plateau (10 consecutive DISCARDs) | Log warning, continue |
-| Cost limit reached | Stop cleanly |
+| Plateau (`PLATEAU_WINDOW` consecutive DISCARDs) | Emit `run_end`, exit gracefully |
+| `stop.flag` present at iteration start | Emit `run_end`, exit gracefully |
+| Cost limit reached | Emit `run_end`, exit gracefully |
+| Ctrl+C | Immediate exit — no `run_end` event |
 
 ---
 
@@ -237,6 +239,19 @@ The safety timeout is enforced at the OS process level via `subprocess.run(timeo
 ### Why commit after evaluation, not before?
 
 Base autoresearch commits the modified training script before evaluation and reverts on DISCARD. This works because the artifact is a Python file that can be git-reset. Here, the "artifact" is the winning proposal, which only exists after Stage 3 runs. Committing after evaluation is the only option. The branch-tip invariant is preserved.
+
+### How is the stop signal communicated from the UI to `run.py`?
+
+The backend and experiment loop are separate processes with no shared memory. The signal uses a **flag file** (`stop.flag`):
+
+1. User clicks Stop Run in the dashboard
+2. Frontend calls `POST /api/stop`
+3. Backend writes `stop.flag` to the project root
+4. `run.py` checks `stop.flag` at the start of each iteration — if it exists, calls `graceful_exit()` and breaks
+
+This is the same filesystem-coupling pattern used for `events.jsonl` IPC. No sockets, no signals, no inter-process communication beyond the filesystem. `stop.flag` is deleted by `graceful_exit()` and also cleared on the next `bash start.sh`.
+
+The same `graceful_exit()` path handles all three clean exit conditions (plateau, stop button, cost limit), ensuring `run_end` is always emitted and logs are always consistent.
 
 ### How does our time budget compare to Karpathy's?
 
