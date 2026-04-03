@@ -14,9 +14,9 @@ export default function App() {
   const [prevArtifact, setPrevArtifact] = useState('')
 
   // Current iteration stage data
-  const [stage1Data, setStage1Data] = useState(null)
-  const [stage2Data, setStage2Data] = useState(null)
-  const [stage3Data, setStage3Data] = useState(null)
+  const [stage1Data, setStage1Data] = useState(null)   // { proposals, model_names }
+  const [stage2Data, setStage2Data] = useState(null)   // { rankings, votes, model_names }
+  const [stage3Data, setStage3Data] = useState(null)   // { winner, council_score, critique, ... }
   const [activeTab, setActiveTab] = useState('artifact')
   const [stopping, setStopping] = useState(false)
   const [runEnded, setRunEnded] = useState(null)  // { reason, iteration, best_score }
@@ -51,12 +51,12 @@ export default function App() {
       try {
         const event = JSON.parse(e.data)
         if (event.type === 'stage1_complete') {
-          setStage1Data(event.proposals)
+          setStage1Data({ proposals: event.proposals, modelNames: event.model_names })
           setStage2Data(null)
           setStage3Data(null)
           setActiveTab('stage1')
         } else if (event.type === 'stage2_complete') {
-          setStage2Data(event.rankings)
+          setStage2Data({ rankings: event.rankings, votes: event.votes, modelNames: event.model_names })
           setActiveTab('stage2')
         } else if (event.type === 'stage3_complete') {
           setStage3Data(event)
@@ -174,10 +174,10 @@ export default function App() {
             <ArtifactView current={artifact} previous={prevArtifact} />
           )}
           {activeTab === 'stage1' && (
-            <Stage1 proposals={stage1Data} />
+            <Stage1 proposals={stage1Data?.proposals} modelNames={stage1Data?.modelNames} />
           )}
           {activeTab === 'stage2' && (
-            <Stage2 rankings={stage2Data} />
+            <Stage2 rankings={stage2Data?.rankings} votes={stage2Data?.votes} modelNames={stage2Data?.modelNames} />
           )}
           {activeTab === 'stage3' && (
             <Stage3 data={stage3Data} />

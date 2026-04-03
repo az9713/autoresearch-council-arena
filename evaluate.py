@@ -92,6 +92,11 @@ async def stage1_propose(
     return proposals  # e.g. {"A": "...", "B": "...", "C": "..."}
 
 
+def _model_names() -> dict[str, str]:
+    """Return letter → model-slug mapping for the current council."""
+    return {l: m for l, m in zip("ABCD", COUNCIL_MODELS)}
+
+
 # ---------------------------------------------------------------------------
 # Stage 2: Anonymous ranking
 # ---------------------------------------------------------------------------
@@ -199,22 +204,36 @@ async def stage2_rank(
     ]
     responses = await query_models_parallel(COUNCIL_MODELS, messages)
 
-    # Parse each model's ranking
+    # Parse each model's ranking — capture full reasoning text too
     valid_display_letters = set(anonymized.keys())
     all_rankings: list[list[str]] = []
+    per_model_votes: list[dict] = []
+
     for model, resp in responses.items():
         if resp is None or not resp.get("content"):
             print(f"[stage2] {model} returned no response — skipping vote", flush=True)
             continue
-        ranking = _parse_ranking(resp["content"], valid_display_letters)
+        content = resp["content"]
+        ranking = _parse_ranking(content, valid_display_letters)
         if ranking is None:
             print(f"[stage2] {model} ranking parse failed — skipping vote", flush=True)
-            print(f"[stage2] raw response tail: {resp['content'][-200:]}", flush=True)
+            print(f"[stage2] raw response tail: {content[-200:]}", flush=True)
             continue
+        # Reasoning = everything before "FINAL RANKING:"
+        parts = re.split(r"FINAL RANKING:", content, maxsplit=1)
+        reasoning = parts[0].strip() if len(parts) > 1 else ""
+        # Map display ranking back to original letters for transparency
+        original_ranking = [shuffle_map.get(l, l) for l in ranking]
+        per_model_votes.append({
+            "model": model,
+            "display_ranking": " > ".join(ranking),
+            "original_ranking": " > ".join(original_ranking),
+            "reasoning": reasoning,
+        })
         all_rankings.append(ranking)
 
     if len(all_rankings) < 2:
-        return [], shuffle_map
+        return [], shuffle_map, []
 
     # Aggregate in display-letter space, then map back to original letters
     display_aggregate = _aggregate_rankings(all_rankings, valid_display_letters)
@@ -230,7 +249,7 @@ async def stage2_rank(
             "votes": entry["votes"],
         })
 
-    return aggregate, shuffle_map
+    return aggregate, shuffle_map, per_model_votes
 
 
 # ---------------------------------------------------------------------------
@@ -297,6 +316,7 @@ async def stage3_judge(
             "council_score": 0,
             "critique": "Chairman unavailable.",
             "winning_text": current_artifact,
+            "chairman_full_response": "",
         }
 
     content = resp["content"]
@@ -335,6 +355,7 @@ async def stage3_judge(
         "council_score": council_score,
         "critique": critique,
         "winning_text": winning_text,
+        "chairman_full_response": content,
     }
 
 
@@ -374,12 +395,17 @@ async def main() -> None:
         print("[evaluate] All council models failed in Stage 1 — aborting", flush=True)
         sys.exit(1)
 
+    model_names = _model_names()
     print(f"[evaluate] Stage 1 complete: {len(proposals)} proposals ({', '.join(proposals.keys())})", flush=True)
-    _emit_event({"type": "stage1_complete", "proposals": {k: v[:500] for k, v in proposals.items()}})
+    _emit_event({
+        "type": "stage1_complete",
+        "proposals": proposals,          # full text, no truncation
+        "model_names": model_names,      # {"A": "openai/gpt-5.4-nano", ...}
+    })
 
     # Stage 2 — anonymous ranking
     print("[evaluate] Stage 2: ranking proposals...", flush=True)
-    aggregate, shuffle_map = await stage2_rank(proposals, artifact, program)
+    aggregate, shuffle_map, per_model_votes = await stage2_rank(proposals, artifact, program)
 
     if len(aggregate) < 2:
         print("[evaluate] Insufficient rankings from Stage 2 — aborting", flush=True)
@@ -388,18 +414,29 @@ async def main() -> None:
     print("[evaluate] Stage 2 rankings:", flush=True)
     for r in aggregate:
         print(f"  {r['letter']} avg_pos={r['avg_position']:.2f} votes={r['votes']}", flush=True)
-    _emit_event({"type": "stage2_complete", "rankings": aggregate, "shuffle_map": shuffle_map})
+    _emit_event({
+        "type": "stage2_complete",
+        "rankings": aggregate,
+        "shuffle_map": shuffle_map,
+        "votes": per_model_votes,        # per-model rankings + reasoning
+        "model_names": model_names,
+    })
 
     # Stage 3 — chairman judgment
     print("[evaluate] Stage 3: chairman judging...", flush=True)
     result = await stage3_judge(proposals, aggregate, artifact, program)
 
+    winner_model = model_names.get(result["winner"], CHAIRMAN_MODEL if result["winner"] == "E" else "unknown")
     print(f"[evaluate] Stage 3 complete: winner={result['winner']} score={result['council_score']}", flush=True)
     _emit_event({
         "type": "stage3_complete",
         "winner": result["winner"],
+        "winner_model": winner_model,
         "council_score": result["council_score"],
         "critique": result["critique"],
+        "chairman_full_response": result["chairman_full_response"],
+        "chairman_model": CHAIRMAN_MODEL,
+        "model_names": model_names,
     })
 
     # Write winning proposal for run.py to read

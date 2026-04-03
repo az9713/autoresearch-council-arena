@@ -1,7 +1,8 @@
 /**
- * Stage3.jsx — Chairman verdict, score, and critique.
+ * Stage3.jsx — Chairman verdict, score, critique, and full response.
  * Adapted from karpathy/llm-council frontend Stage3.jsx pattern.
  */
+import { useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 
 const WINNER_LABELS = {
@@ -11,14 +12,20 @@ const WINNER_LABELS = {
 const WINNER_COLORS = { A: '#7c8ff0', B: '#4ade80', C: '#f59e0b', D: '#f87171', E: '#94a3b8' }
 
 export default function Stage3({ data }) {
+  const [showFullResponse, setShowFullResponse] = useState(false)
+
   if (!data) {
     return <Empty message="Waiting for Stage 3 verdict..." />
   }
 
-  const { winner, council_score, critique, confirmed_status } = data
+  const {
+    winner, council_score, critique,
+    chairman_full_response, chairman_model,
+    winner_model, model_names,
+    confirmed_status,
+  } = data
+
   const color = WINNER_COLORS[winner] || '#7c8ff0'
-  // confirmed_status ('KEEP'/'DISCARD') arrives via iteration_result event after run.py
-  // decides. Before that, winner===E is always DISCARD; winner!==E is pending confirmation.
   const isConfirmed = !!confirmed_status
   const isKeep = isConfirmed ? confirmed_status === 'KEEP' : false
 
@@ -26,15 +33,12 @@ export default function Stage3({ data }) {
     <div style={{ maxWidth: 700 }}>
       <h2 style={styles.heading}>Stage 3 — Chairman's Verdict</h2>
       <p style={styles.sub}>
-        The chairman reviewed all proposals, peer rankings, and the current baseline.
+        Chairman: <span style={{ color: '#a5b4fc' }}>{chairman_model || 'unknown'}</span>
+        {' '}· reviewed all proposals, peer rankings, and the current baseline.
       </p>
 
       {/* Score + winner banner */}
-      <div style={{
-        ...styles.banner,
-        borderColor: color,
-        background: `${color}12`,
-      }}>
+      <div style={{ ...styles.banner, borderColor: color, background: `${color}12` }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
           {/* Score dial */}
           <div style={{
@@ -48,10 +52,15 @@ export default function Stage3({ data }) {
           </div>
 
           <div>
-            <div style={{ fontSize: 13, color: '#8892b0', marginBottom: 4 }}>Winner</div>
+            <div style={{ fontSize: 13, color: '#8892b0', marginBottom: 2 }}>Winner</div>
             <div style={{ fontSize: 16, fontWeight: 700, color }}>
               {WINNER_LABELS[winner] || `Version ${winner}`}
             </div>
+            {winner !== 'E' && winner_model && (
+              <div style={{ fontSize: 11, color: '#4a5168', marginTop: 2 }}>
+                {winner_model}
+              </div>
+            )}
             <div style={{
               marginTop: 6, fontSize: 12, fontWeight: 600,
               color: isConfirmed
@@ -71,11 +80,54 @@ export default function Stage3({ data }) {
       {/* Critique */}
       {critique && (
         <div style={styles.card}>
-          <h3 style={{ fontSize: 14, fontWeight: 600, color: '#8892b0', marginBottom: 12 }}>
-            Chairman's Critique
-          </h3>
+          <h3 style={styles.cardHeading}>Chairman's Critique</h3>
           <div style={styles.prose}>
             <ReactMarkdown>{critique}</ReactMarkdown>
+          </div>
+        </div>
+      )}
+
+      {/* Full chairman response */}
+      {chairman_full_response && (
+        <div style={{ ...styles.card, marginTop: 16 }}>
+          <div
+            style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
+            onClick={() => setShowFullResponse(v => !v)}
+          >
+            <h3 style={{ ...styles.cardHeading, marginBottom: 0 }}>Chairman's Full Response</h3>
+            <span style={{ fontSize: 12, color: '#4a5168' }}>
+              {showFullResponse ? '▲ collapse' : '▼ expand'}
+            </span>
+          </div>
+          {showFullResponse && (
+            <div style={{ ...styles.prose, marginTop: 12, whiteSpace: 'pre-wrap', fontFamily: 'monospace', fontSize: 12 }}>
+              {chairman_full_response}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Model name legend */}
+      {model_names && Object.keys(model_names).length > 0 && (
+        <div style={{ ...styles.card, marginTop: 16 }}>
+          <h3 style={styles.cardHeading}>Council Model Assignment</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {Object.entries(model_names).map(([letter, model]) => (
+              <div key={letter} style={{ display: 'flex', gap: 12, fontSize: 12 }}>
+                <span style={{ fontWeight: 700, color: WINNER_COLORS[letter], width: 20 }}>{letter}</span>
+                <span style={{ color: '#cbd5e1' }}>{model}</span>
+                {letter === winner && <span style={{ color: '#4ade80' }}>← winner</span>}
+              </div>
+            ))}
+            <div style={{ display: 'flex', gap: 12, fontSize: 12, marginTop: 4, paddingTop: 8, borderTop: '1px solid #2a2f4a' }}>
+              <span style={{ fontWeight: 700, color: '#94a3b8', width: 20 }}>E</span>
+              <span style={{ color: '#cbd5e1' }}>current artifact (baseline)</span>
+              {winner === 'E' && <span style={{ color: '#94a3b8' }}>← winner</span>}
+            </div>
+            <div style={{ display: 'flex', gap: 12, fontSize: 12, paddingTop: 4 }}>
+              <span style={{ fontWeight: 700, color: '#a5b4fc', width: 20 }}>★</span>
+              <span style={{ color: '#cbd5e1' }}>{chairman_model} (chairman)</span>
+            </div>
           </div>
         </div>
       )}
@@ -102,5 +154,6 @@ const styles = {
     background: '#161b2e', border: '1px solid #2a2f4a',
     borderRadius: 10, padding: 20,
   },
+  cardHeading: { fontSize: 14, fontWeight: 600, color: '#8892b0', marginBottom: 12 },
   prose: { fontSize: 14, lineHeight: 1.7, color: '#cbd5e1' },
 }

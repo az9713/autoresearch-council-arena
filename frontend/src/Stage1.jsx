@@ -8,7 +8,7 @@ import ReactMarkdown from 'react-markdown'
 const MODEL_LABELS = { A: 'Model A', B: 'Model B', C: 'Model C', D: 'Model D' }
 const COLORS = { A: '#7c8ff0', B: '#4ade80', C: '#f59e0b', D: '#f87171' }
 
-export default function Stage1({ proposals }) {
+export default function Stage1({ proposals, modelNames }) {
   const [active, setActive] = useState('A')
 
   if (!proposals) {
@@ -41,9 +41,16 @@ export default function Stage1({ proposals }) {
       {proposals[active] && (
         <div style={styles.card}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
-            <span style={{ color: COLORS[active], fontWeight: 600, fontSize: 13 }}>
-              {MODEL_LABELS[active] || `Version ${active}`}
-            </span>
+            <div>
+              <span style={{ color: COLORS[active], fontWeight: 600, fontSize: 13 }}>
+                {MODEL_LABELS[active] || `Version ${active}`}
+              </span>
+              {modelNames?.[active] && (
+                <span style={{ color: '#4a5168', fontSize: 11, marginLeft: 8 }}>
+                  {modelNames[active]}
+                </span>
+              )}
+            </div>
             <span style={{ color: '#4a5168', fontSize: 12 }}>
               {proposals[active].split(/\s+/).length} words
             </span>
