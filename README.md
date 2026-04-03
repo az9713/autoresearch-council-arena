@@ -20,6 +20,10 @@ We ran the system for **48 real iterations** on a live tutorial-writing task —
 <!-- demo video — replace URL after opening a GitHub issue to host the asset -->
 <video src="https://github.com/user-attachments/assets/3cb66647-6a81-469e-91e6-868d1d5362aa" controls width="100%"></video>
 
+*Snapshot of the final round — iteration 49, best score 96/100, all five scoring dimensions near ceiling:*
+
+![Final round — Stage 3 Chairman's Verdict, iteration 49, score 96/100](docs/final_round.jpg)
+
 **Highlights:**
 - 2 KEEPs in the first 11 iterations before a network outage interrupted the run
 - Sub-score breakdown (Correctness / Completeness / Clarity / Code Quality / Depth) tracked per iteration
