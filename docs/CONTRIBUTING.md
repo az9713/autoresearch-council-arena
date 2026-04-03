@@ -55,15 +55,17 @@ If you add new metrics, print them to stdout in the same format: `metric_name: v
 
 ### Events
 
-`evaluate.py` emits events by appending to `events.jsonl`:
+Both `evaluate.py` and `run.py` append to `events.jsonl`:
 
 ```python
 def _emit_event(event: dict) -> None:
-    with EVENT_FILE.open("a") as f:
+    with EVENTS_FILE.open("a", encoding="utf-8") as f:
         f.write(json.dumps(event) + "\n")
 ```
 
-Event types are consumed by `backend/server.py` and forwarded to the frontend. If you add a new event type, update `App.jsx` to handle it.
+`events.jsonl` is **append-only across runs** — never cleared. Each run emits a `run_start` marker at startup and `iteration_result` after each KEEP/DISCARD (from `run.py`). Stage events (`stage1_complete`, `stage2_complete`, `stage3_complete`) come from `evaluate.py`.
+
+Event types consumed by `backend/server.py` are forwarded to the frontend via SSE. If you add a new event type, update `App.jsx` to handle it. `run_start` and `iteration_result` events are not forwarded to the frontend (they are run-level, not stage-level).
 
 ## Running Components Individually
 
@@ -144,6 +146,6 @@ The backend allows `localhost:5173` and `127.0.0.1:5173` only. If Vite runs on a
 ## Known Limitations
 
 - **No authentication.** The backend is local-only and has no auth. Do not expose port 8001 publicly.
-- **`events.jsonl` is never rotated.** Long runs accumulate all events in one file. The SSE server reads from the current position, so it stays fast, but the file will grow indefinitely.
+- **`events.jsonl` grows indefinitely.** It is append-only across all runs and never rotated. The SSE server tails from the current position at connect time, so it stays fast regardless of file size — but the file will grow over many long runs. Delete it manually to reset if needed (the system will recreate it).
 - **Stage 2 proposals are truncated to 500 chars in events.** The full text is only available in `winning_proposal.md` (winner only) or by re-running `evaluate.py`.
 - **Single run per directory.** Running two experiment loops in the same directory simultaneously will corrupt `events.jsonl` and `results.tsv`. Use separate directories for parallel experiments.

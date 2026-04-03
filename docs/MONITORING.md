@@ -158,7 +158,7 @@ API issues. Usually self-resolves. If it persists, check your OpenRouter credits
 ```
 [run] COST LIMIT REACHED: $5.0023 spent (limit $5.00). Stopping.
 ```
-Normal termination. Raise `COST_LIMIT_USD` in `config.py` to continue.
+Normal termination. Raise `COST_LIMIT_USD` in `.env` to continue.
 
 ```
 [openrouter] Error querying openai/gpt-5.4-nano: ...
@@ -213,6 +213,42 @@ High score on iteration 1 means the initial `artifact.md` was already quite good
 
 ---
 
+## Post-Run Log Inspection
+
+Two files persist after a run for offline analysis:
+
+### `run.log`
+
+A copy of everything printed to the terminal during the last `bash start.sh` session. Created by `tee` — overwritten each time you restart.
+
+```bash
+cat run.log | grep "KEEP\|DISCARD"      # KEEP/DISCARD summary
+cat run.log | grep "council_score"      # All scores
+cat run.log | grep "Error querying"     # API failures
+```
+
+### `events.jsonl`
+
+Append-only across all runs. Contains every stage event from `evaluate.py` plus `run_start` and `iteration_result` markers from `run.py`. Use `jq` to query:
+
+```bash
+# All iteration results across all runs
+jq 'select(.type == "iteration_result")' events.jsonl
+
+# All KEEP iterations with scores
+jq 'select(.type == "iteration_result" and .status == "KEEP") | {iteration, council_score, commit}' events.jsonl
+
+# Runs by tag
+jq 'select(.type == "run_start") | {run_tag, timestamp, cost_limit_usd}' events.jsonl
+
+# Stage 3 critiques
+jq 'select(.type == "stage3_complete") | .critique' events.jsonl
+```
+
+`events.jsonl` is the machine-readable complement to `results.tsv`. It has more fields (spent_usd, best_score) and includes stage-level events that `results.tsv` does not.
+
+---
+
 ## Quick Reference: When to Act
 
 | Signal | Where to see it | Action |
@@ -224,4 +260,4 @@ High score on iteration 1 means the initial `artifact.md` was already quite good
 | Score above 90 with no KEEPs | Score chart | Expected — you're near the ceiling for this topic |
 | Word count approaching 3000 | Sidebar | Add word limit constraint to `program.md` |
 | One model always missing from proposals | Stage 1 tab | Check terminal for API errors; replace model in `config.py` |
-| Spend approaching cost limit | Terminal | Raise `COST_LIMIT_USD` in `config.py` if you want to continue |
+| Spend approaching cost limit | Terminal | Raise `COST_LIMIT_USD` in `.env` if you want to continue |

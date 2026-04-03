@@ -32,18 +32,19 @@ These systems are loosely coupled: the experiment loop forks `evaluate.py` as a 
 │  │           → WINNER + COUNCIL_SCORE + CRITIQUE                  │  │
 │  │                                                                 │  │
 │  │  writes: winning_proposal.md, critique.md                      │  │
-│  │  appends: events.jsonl                                         │  │
+│  │  appends: events.jsonl (stage1/2/3_complete events)            │  │
 │  │  prints: "council_score: 87" / "winner: B"  (grep-able)       │  │
 │  └─────────────────────────────────────────────────────────────────┘  │
 │                                                                        │
 │  reads stdout → extract council_score, winner                         │
 │  if KEEP: copy winning_proposal.md → artifact.md, git commit          │
 │  appends: results.tsv                                                  │
+│  appends: events.jsonl (run_start + iteration_result events)          │
 └────────────────────────────────────────────────────────────────────────┘
 
-                    ┌──────────────────────┐
-                    │  events.jsonl (IPC)  │
-                    └──────────┬───────────┘
+                    ┌─────────────────────────────────────────┐
+                    │  events.jsonl (IPC + persistent log)    │
+                    └──────────┬──────────────────────────────┘
                                │ tail (2s poll)
                     ┌──────────▼───────────┐
                     │  backend/server.py   │
@@ -158,9 +159,9 @@ If `winner == "E"`, the existing artifact was judged best. No improvement, no co
 
 ### Cost Limiting
 
-At startup, `run.py` queries `https://openrouter.ai/api/v1/auth/key` for the initial credit balance. Before each iteration, it checks the current balance and computes `spent = initial - current`. If `spent >= COST_LIMIT_USD`, the loop stops cleanly.
+At startup, `run.py` queries `https://openrouter.ai/api/v1/auth/key` and records `initial_usage` from the `usage` field (cumulative USD spent since key creation). Before each iteration, it reads the current `usage` again and computes `spent = current_usage - initial_usage`. If `spent >= COST_LIMIT_USD`, the loop stops cleanly.
 
-This uses real billing data from OpenRouter, not an estimate. Set `COST_LIMIT_USD = None` in `config.py` to disable.
+This uses real billing data from OpenRouter, not an estimate. Works for both credit-limited and unlimited keys because it tracks cumulative usage rather than remaining balance. Set `COST_LIMIT_USD` in `.env` to control the limit (blank or absent = no limit).
 
 ### Failure Modes
 
@@ -215,7 +216,8 @@ The React frontend is intentionally minimal (no build-time framework, no routing
 | `program.md` | Human | `evaluate.py` | UTF-8 Markdown |
 | `critique.md` | `evaluate.py` | `evaluate.py` (next iteration) | UTF-8 plain text |
 | `winning_proposal.md` | `evaluate.py` | `run.py` | UTF-8 Markdown |
-| `events.jsonl` | `evaluate.py` | `backend/server.py` | UTF-8, one JSON object per line |
+| `events.jsonl` | `evaluate.py`, `run.py` | `backend/server.py` | UTF-8, one JSON object per line, append-only across runs |
+| `run.log` | `start.sh` (`tee`) | Human inspection | UTF-8 plain text, overwritten each `bash start.sh` |
 | `results.tsv` | `run.py` | `evaluate.py`, `backend/server.py` | UTF-8, tab-separated, header row |
 
 ---
@@ -225,6 +227,8 @@ The React frontend is intentionally minimal (no build-time framework, no routing
 ### Why `events.jsonl` instead of a message queue?
 
 JSONL append is atomic per-line on all modern OS/filesystems for writes under 4KB (each event is well under this). No Redis, no pub/sub infrastructure, no daemon. The SSE server's 2-second poll latency is acceptable for a system where each iteration takes 1-5 minutes.
+
+`events.jsonl` is append-only across runs — it is never cleared. Each run emits a `run_start` marker so sessions are identifiable in the log. `run.py` also emits `iteration_result` events after each KEEP/DISCARD, making the file a complete machine-readable run history (complementing the human-readable `run.log` created by `tee` in `start.sh`).
 
 ### Why fork `evaluate.py` as a subprocess?
 

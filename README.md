@@ -114,14 +114,15 @@ autoresearch-council-arena/
 └── .env.example        # API key template
 ```
 
-**Auto-generated at runtime** (not committed):
+**Auto-generated at runtime:**
 
-| File | Description |
-|------|-------------|
-| `events.jsonl` | Append-only IPC between `evaluate.py` and SSE server |
-| `winning_proposal.md` | Latest winning proposal (read by `run.py` on KEEP) |
-| `critique.md` | Chairman critique, fed back into Stage 1 next iteration |
-| `results.tsv` | Full iteration log (commit, score, status, timestamp) |
+| File | Committed | Description |
+|------|-----------|-------------|
+| `events.jsonl` | No | Append-only log — stage events (evaluate.py) + run/iteration events (run.py); persists across runs |
+| `run.log` | No | Human-readable terminal output from the last `bash start.sh`; overwritten each restart |
+| `winning_proposal.md` | No | Latest winning proposal (read by `run.py` on KEEP) |
+| `critique.md` | **Yes** | Chairman critique — committed on KEEP and fed back into Stage 1 next iteration |
+| `results.tsv` | No | Full iteration log (commit, score, status, timestamp) |
 
 ---
 

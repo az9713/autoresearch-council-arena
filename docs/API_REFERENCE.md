@@ -172,6 +172,44 @@ Note: Proposal text is truncated to 500 characters in the event. Full text is on
 }
 ```
 
+**`run_start`** — emitted by `run.py` at loop startup (not evaluate.py)
+
+```jsonc
+{
+  "type": "run_start",
+  "run_tag": "20260402_170824",
+  "timestamp": "2026-04-02T17:08:24Z",
+  "cost_limit_usd": 5.0,
+  "initial_usage_usd": 12.3456
+}
+```
+
+- `run_tag` — timestamp string used as the git branch suffix (`autoresearch/{run_tag}`)
+- `cost_limit_usd` — value from `.env`, or `null` if no limit is set
+- `initial_usage_usd` — cumulative OpenRouter spend at loop startup; the cost limit is measured as `current - initial`
+
+**`iteration_result`** — emitted by `run.py` after each KEEP or DISCARD
+
+```jsonc
+{
+  "type": "iteration_result",
+  "iteration": 4,
+  "status": "KEEP",
+  "council_score": 87,
+  "winner": "B",
+  "best_score": 87,
+  "commit": "da864d6",
+  "spent_usd": 0.0821,
+  "timestamp": "2026-04-02T17:12:03Z"
+}
+```
+
+- `status` — `KEEP` or `DISCARD` (not TIMEOUT/CRASH — those don't reach this event)
+- `council_score` — raw score from Stage 3 (same value as `results.tsv`)
+- `best_score` — best score after this iteration (updated if KEEP)
+- `commit` — git commit hash (same as previous KEEP for DISCARDs)
+- `spent_usd` — cumulative USD spent this run at time of event
+
 **`heartbeat`** — sent every 2 seconds
 
 ```jsonc
