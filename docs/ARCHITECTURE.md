@@ -244,16 +244,16 @@ The React frontend is intentionally minimal (no build-time framework, no routing
 
 ## File Encoding Contracts
 
-| File | Producer | Consumer | Format |
-|------|----------|----------|--------|
-| `artifact.md` | `run.py` (KEEP), initial human | `evaluate.py`, `backend/server.py`, frontend | UTF-8 Markdown |
-| `program.md` | Human | `evaluate.py` | UTF-8 Markdown |
-| `critique.md` | `evaluate.py` | `evaluate.py` (next iteration) | UTF-8 plain text |
-| `tried_strategies.md` | `run.py` | `evaluate.py` (Stage 1 prompt) | UTF-8, one line per iteration, append-only within a run |
-| `winning_proposal.md` | `evaluate.py` | `run.py` | UTF-8 Markdown |
-| `events.jsonl` | `evaluate.py`, `run.py` | `backend/server.py` | UTF-8, one JSON object per line, append-only across runs |
-| `run.log` | `start.sh` (`tee`) | Human inspection | UTF-8 plain text, overwritten each `bash start.sh` |
-| `results.tsv` | `run.py` | `evaluate.py`, `backend/server.py` | UTF-8, tab-separated, header row |
+| File | Producer | Consumer | Format | Description |
+|------|----------|----------|--------|-------------|
+| `artifact.md` | `run.py` (KEEP), initial human | `evaluate.py`, `backend/server.py`, frontend | UTF-8 Markdown | The artifact being improved. The branch tip always equals the best version seen so far. Reset by copying from a reference file before each run. |
+| `program.md` | Human | `evaluate.py` | UTF-8 Markdown | Experiment objectives, evaluation criteria, constraints, and exploration directions. Edited by the user to guide the council. Never touched by the system. |
+| `critique.md` | `evaluate.py` (Stage 3) | `evaluate.py` (Stage 1, next iteration) | UTF-8 plain text | The chairman's qualitative critique of the winning proposal. Written after every Stage 3. Fed back into the Stage 1 prompt so council models know what the chairman valued and what to try differently. Overwritten each iteration; committed for history and transparency. |
+| `tried_strategies.md` | `run.py` | `evaluate.py` (Stage 1 prompt) | UTF-8, one line per iteration, append-only within a run | The strategy log — one line per iteration recording the status, score, and first sentence of the critique. Mirrors the role of `git log` in Karpathy's single-agent loop: gives council models memory of what has already been attempted so they don't repeat the same approach. Cleared at the start of each run. |
+| `winning_proposal.md` | `evaluate.py` (Stage 3) | `run.py` | UTF-8 Markdown | The text of the winning proposal from the most recent Stage 3. Temporary IPC file — `run.py` reads it immediately after `evaluate.py` exits and either copies it to `artifact.md` (KEEP) or discards it. |
+| `events.jsonl` | `evaluate.py`, `run.py` | `backend/server.py` | UTF-8, one JSON object per line, append-only within a run | The complete machine-readable run log. Every stage event, iteration result, run start, and run end is appended here. Tailed by the SSE server to drive the live dashboard. Cleared at run start; committed for history and transparency. |
+| `run.log` | `start.sh` (`tee`) | Human inspection | UTF-8 plain text, overwritten each `bash start.sh` | Human-readable terminal output captured by `tee`. Overwritten on each restart. Not committed — use `events.jsonl` for persistent history. |
+| `results.tsv` | `run.py` | `evaluate.py`, `backend/server.py` | UTF-8, tab-separated, header row | Summary table of every iteration: commit hash, score, status (KEEP/DISCARD/CRASH), description, timestamp. Fed back into the Stage 1 prompt as experiment history (last 5 rows). Cleared at run start. |
 
 ---
 
