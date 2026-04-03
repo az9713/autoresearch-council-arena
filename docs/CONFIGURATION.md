@@ -59,7 +59,11 @@ PLATEAU_WINDOW = 10
 
 **`IMPROVEMENT_THRESHOLD`** — minimum score delta to accept a new version. Prevents noise-driven commits where the score fluctuates by 1-2 points. Increase for stricter hill-climbing; set to 0 to accept any improvement.
 
-**`EXPERIMENT_TIMEOUT`** — wall-clock seconds before `run.py` kills the `evaluate.py` subprocess. 300s (5 minutes) matches karpathy/autoresearch. Increase if models are consistently timing out.
+**`EXPERIMENT_TIMEOUT`** — wall-clock seconds before `run.py` kills the `evaluate.py` subprocess if it hangs. This is a **safety net**, not a fixed duration — a normal iteration completes in 30–90 seconds (9 API calls) and is never artificially held to 300s.
+
+This differs from karpathy/autoresearch, where `TIME_BUDGET = 300` is a *minimum guaranteed duration*: `train.py` accumulates actual GPU compute time internally (`total_training_time += dt`) and keeps training until it has consumed the full budget. Neural network training is compute-bound, so the budget controls how much learning happens per iteration.
+
+Our work is network-bound (LLM API calls). There is no meaningful way to make an API call "train longer." Our fixed unit of work is the call structure itself — 9 calls every iteration, always — which is the correct analog to Karpathy's fixed time budget.
 
 **`MAX_ARTIFACT_WORDS`** — if the winning proposal exceeds this word count, Stage 3 falls back to E (current artifact). Prevents the system from producing unmanageably long outputs. Default 3000 is generous; adjust to match your `program.md` word limit.
 

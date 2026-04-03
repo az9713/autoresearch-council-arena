@@ -232,11 +232,26 @@ JSONL append is atomic per-line on all modern OS/filesystems for writes under 4K
 
 ### Why fork `evaluate.py` as a subprocess?
 
-The 5-minute timeout is enforced at the OS process level via `subprocess.run(timeout=300)`. A Python `asyncio.wait_for` cannot reliably kill hung network calls. The subprocess also provides clean stdout capture for metric extraction — the autoresearch grep pattern.
+The safety timeout is enforced at the OS process level via `subprocess.run(timeout=EXPERIMENT_TIMEOUT)`. A Python `asyncio.wait_for` cannot reliably kill hung network calls. The subprocess also provides clean stdout capture for metric extraction — the autoresearch grep pattern (`council_score: 87`, `winner: B`).
 
 ### Why commit after evaluation, not before?
 
 Base autoresearch commits the modified training script before evaluation and reverts on DISCARD. This works because the artifact is a Python file that can be git-reset. Here, the "artifact" is the winning proposal, which only exists after Stage 3 runs. Committing after evaluation is the only option. The branch-tip invariant is preserved.
+
+### How does our time budget compare to Karpathy's?
+
+In karpathy/autoresearch, `TIME_BUDGET = 300` is a **minimum guaranteed training duration**. Inside `train.py`, the loop accumulates actual GPU wall-clock time per step (`total_training_time += dt`) and only exits when it has consumed at least 300 seconds of compute:
+
+```python
+if step > 10 and total_training_time >= TIME_BUDGET:
+    break
+```
+
+Each iteration always uses the full 5-minute budget. This makes sense because neural network training is compute-bound — more time means more gradient steps and a better model.
+
+Our `EXPERIMENT_TIMEOUT = 300` is fundamentally different: it is a **safety kill switch** applied externally via `subprocess.run(timeout=300)`. A normal iteration completes in 30–90 seconds (9 LLM API calls) and is never held to 300 seconds. If evaluate.py somehow hangs, the subprocess is killed and the iteration is logged as TIMEOUT.
+
+The correct analog to Karpathy's fixed time budget is our **fixed call structure**: every iteration always runs all 3 stages with all 4 council models — 4 proposals + 4 rankings + 1 chairman judgment = 9 API calls. This is the unit of work, not wall-clock time. LLM API calls are network-bound; there is no meaningful way to make them "train longer."
 
 ### Why freeze `evaluate.py`?
 
