@@ -15,9 +15,12 @@ export default function Stage3({ data }) {
     return <Empty message="Waiting for Stage 3 verdict..." />
   }
 
-  const { winner, council_score, critique } = data
+  const { winner, council_score, critique, confirmed_status } = data
   const color = WINNER_COLORS[winner] || '#7c8ff0'
-  const isImprovement = winner !== 'E'
+  // confirmed_status ('KEEP'/'DISCARD') arrives via iteration_result event after run.py
+  // decides. Before that, winner===E is always DISCARD; winner!==E is pending confirmation.
+  const isConfirmed = !!confirmed_status
+  const isKeep = isConfirmed ? confirmed_status === 'KEEP' : false
 
   return (
     <div style={{ maxWidth: 700 }}>
@@ -51,9 +54,15 @@ export default function Stage3({ data }) {
             </div>
             <div style={{
               marginTop: 6, fontSize: 12, fontWeight: 600,
-              color: isImprovement ? '#4ade80' : '#f87171',
+              color: isConfirmed
+                ? (isKeep ? '#4ade80' : '#f87171')
+                : winner === 'E' ? '#f87171' : '#fbbf24',
             }}>
-              {isImprovement ? '✓ KEEP — artifact will be updated' : '✗ DISCARD — no improvement this round'}
+              {isConfirmed
+                ? (isKeep ? '✓ KEEP — artifact updated' : '✗ DISCARD — no improvement')
+                : winner === 'E'
+                  ? '✗ DISCARD — current artifact was best'
+                  : '⏳ Pending — awaiting score confirmation from run.py'}
             </div>
           </div>
         </div>

@@ -61,6 +61,9 @@ export default function App() {
         } else if (event.type === 'stage3_complete') {
           setStage3Data(event)
           setActiveTab('stage3')
+        } else if (event.type === 'iteration_result') {
+          // Confirmed KEEP/DISCARD from run.py — update stage3 with actual outcome
+          setStage3Data(prev => prev ? { ...prev, confirmed_status: event.status } : prev)
         } else if (event.type === 'run_end') {
           setRunEnded(event)
           setStopping(false)

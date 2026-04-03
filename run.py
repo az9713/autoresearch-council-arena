@@ -209,6 +209,7 @@ def main() -> None:
         iteration += 1
 
         # --- Stop-flag check (set by POST /api/stop from the UI) ---
+        print(f"[run] Checking stop flag: {STOP_FLAG.resolve()}", flush=True)
         if STOP_FLAG.exists():
             stop_reason = "stop_requested"
             graceful_exit(stop_reason)

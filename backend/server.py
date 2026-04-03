@@ -124,7 +124,8 @@ async def stop_run():
     """Write stop.flag — run.py checks for this at the start of each iteration
     and exits gracefully after the current iteration completes."""
     STOP_FLAG.write_text("stop", encoding="utf-8")
-    return {"status": "stop_requested"}
+    print(f"[server] STOP requested — wrote {STOP_FLAG}", flush=True)
+    return {"status": "stop_requested", "flag_path": str(STOP_FLAG)}
 
 
 @app.get("/api/stream")
