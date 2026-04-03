@@ -26,6 +26,7 @@ import httpx
 from config import EXPERIMENT_TIMEOUT, IMPROVEMENT_THRESHOLD, PLATEAU_WINDOW, OPENROUTER_API_KEY, COST_LIMIT_USD
 
 STOP_FLAG = Path("stop.flag")
+STRATEGIES_FILE = Path("tried_strategies.md")
 
 # ---------------------------------------------------------------------------
 # Git helpers
@@ -157,7 +158,7 @@ def main() -> None:
     git_setup(run_tag)
 
     # Clean slate: wipe all accumulated state from previous runs.
-    for stale in [TSV_FILE, EVENTS_FILE, STOP_FLAG, Path("critique.md"), Path("winning_proposal.md")]:
+    for stale in [TSV_FILE, EVENTS_FILE, STOP_FLAG, STRATEGIES_FILE, Path("critique.md"), Path("winning_proposal.md")]:
         stale.unlink(missing_ok=True)
     print("[run] State cleared — clean run.", flush=True)
 
@@ -209,7 +210,6 @@ def main() -> None:
         iteration += 1
 
         # --- Stop-flag check (set by POST /api/stop from the UI) ---
-        print(f"[run] Checking stop flag: {STOP_FLAG.resolve()}", flush=True)
         if STOP_FLAG.exists():
             stop_reason = "stop_requested"
             graceful_exit(stop_reason)
@@ -234,11 +234,12 @@ def main() -> None:
         try:
             result = subprocess.run(
                 [sys.executable, "evaluate.py"],
-                capture_output=True,
+                stdout=subprocess.PIPE,
+                stderr=None,   # inherit parent — progress prints flow to terminal in real time
                 text=True,
                 timeout=EXPERIMENT_TIMEOUT,
             )
-            log_text = result.stdout + result.stderr
+            log_text = result.stdout
         except subprocess.TimeoutExpired:
             print(f"[run] Iteration {iteration}: TIMEOUT after {EXPERIMENT_TIMEOUT}s", flush=True)
             append_result("none", None, "TIMEOUT", f"iteration {iteration} exceeded time budget")
@@ -298,6 +299,16 @@ def main() -> None:
             print(f"[run] DISCARD — score {score} vs best {best_score} ({reason})", flush=True)
 
         append_result(commit, score, status, f"Iter {iteration} winner={winner}")
+
+        # Append one-line strategy entry so next iteration's models know what was tried.
+        # Uses the first sentence of critique.md as a proxy for the winning strategy.
+        # This mirrors reading `git log` in Karpathy's single-agent loop.
+        if Path("critique.md").exists():
+            critique_text = Path("critique.md").read_text(encoding="utf-8").strip()
+            first_sentence = critique_text.split(".")[0].strip()
+            if first_sentence:
+                with STRATEGIES_FILE.open("a", encoding="utf-8") as f:
+                    f.write(f"Iter {iteration} ({status}, score={score}): {first_sentence}.\n")
 
         # Emit iteration result to persistent event log
         _emit_event({

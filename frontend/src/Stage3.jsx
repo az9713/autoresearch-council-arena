@@ -19,7 +19,7 @@ export default function Stage3({ data }) {
   }
 
   const {
-    winner, council_score, critique,
+    winner, council_score, sub_scores, critique,
     chairman_full_response, chairman_model,
     winner_model, model_names,
     confirmed_status,
@@ -76,6 +76,34 @@ export default function Stage3({ data }) {
           </div>
         </div>
       </div>
+
+      {/* Sub-score breakdown */}
+      {sub_scores && Object.keys(sub_scores).length > 0 && (
+        <div style={styles.card}>
+          <h3 style={styles.cardHeading}>Score Breakdown (0–20 per dimension)</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {Object.entries(sub_scores).map(([dim, val]) => (
+              <div key={dim} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ fontSize: 11, color: '#8892b0', width: 110, flexShrink: 0 }}>
+                  {dim.replace(/_/g, ' ')}
+                </span>
+                <div style={{ flex: 1, background: '#0d1117', borderRadius: 4, height: 10, overflow: 'hidden' }}>
+                  <div style={{
+                    width: `${(val / 20) * 100}%`,
+                    height: '100%',
+                    background: val >= 16 ? '#4ade80' : val >= 12 ? '#f59e0b' : '#f87171',
+                    borderRadius: 4,
+                    transition: 'width 0.4s ease',
+                  }} />
+                </div>
+                <span style={{ fontSize: 12, fontWeight: 700, color: '#cbd5e1', width: 30, textAlign: 'right' }}>
+                  {val}/20
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Critique */}
       {critique && (

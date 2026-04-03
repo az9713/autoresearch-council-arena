@@ -66,7 +66,46 @@ Auto-activates when Stage 1 completes. Shows four proposal cards (A/B/C/D) with 
 
 Bar chart — each bar is a version's "street cred": a normalized score from average peer ranking position. Higher bar = ranked better by peers.
 
-**What to watch:**
+### What is `avg_pos`?
+
+Each of the 4 council models ranks all 5 versions (A, B, C, D, E) from best to worst. Positions are **0-indexed**: best = 0, second = 1, third = 2, fourth = 3, worst = 4.
+
+`avg_pos` is the average of those position values across all 4 voters. **Lower is better.**
+
+```
+avg_pos = 0.00  → every voter ranked it #1 (unanimously best)
+avg_pos = 2.00  → ranked exactly in the middle on average
+avg_pos = 4.00  → every voter ranked it #5 (unanimously worst)
+```
+
+### What is Version E?
+
+**Version E is the current `artifact.md`** — the existing version that the council is trying to beat. It is injected into Stage 2 alongside the four new proposals (A/B/C/D). Council members rank it alongside the proposals without knowing which is which (labels are shuffled each iteration).
+
+The council has 5 participants total: 4 council models (A–D) + 1 chairman. E is not a participant — it is the baseline artifact being judged.
+
+### `avg_pos` vs `council_score` — which drives KEEP/DISCARD?
+
+**Only `council_score` (from Stage 3) drives KEEP/DISCARD.** `avg_pos` is Stage 2 intermediate data — it informs the chairman's judgment but is not used directly by `run.py`.
+
+The decision chain is:
+```
+avg_pos (Stage 2 peer vote) → informs chairman → chairman assigns council_score
+                                                              ↓
+                              run.py: score > best_score + IMPROVEMENT_THRESHOLD → KEEP/DISCARD
+```
+
+The chairman can agree or disagree with peer rankings. A proposal ranked #1 by peers can still receive a lower score than the current best if the chairman judges it to be insufficient progress.
+
+**E's avg_pos is a diagnostic signal**, not a decision input. It tells you how competitive the current artifact is in the council's eyes:
+
+| E's avg_pos trend | Meaning |
+|------------------|---------|
+| Consistently 4.00 | Artifact is weak — proposals always beat it |
+| Dropping toward 2.00 | Artifact has improved and is now competitive |
+| Consistently 1.00–2.00 | Artifact is strong — council struggles to beat it; expect DISCARDs |
+
+### What to watch
 
 | Signal | Interpretation | Action |
 |--------|---------------|--------|
@@ -86,17 +125,39 @@ The most actionable tab. Check it after every iteration.
 
 ### Score Dial
 
-A circular gauge showing the chairman's `council_score` (1–100) for the winning version.
+A circular gauge showing the total `council_score` (0–100) for the winning version. This is the **sum of five sub-scores** (0–20 each) — see the breakdown section below.
 
 | Range | Interpretation |
 |-------|---------------|
 | 0–40 | Low quality — artifact needs significant work |
 | 40–65 | Developing — meaningful content but clear weaknesses |
-| 65–80 | Good — solid argument, minor improvements possible |
-| 80–90 | Strong — high quality, hard to improve further |
-| 90–100 | Exceptional — expect plateau; council will struggle to beat this |
+| 65–80 | Good — solid quality, specific dimensions still weak |
+| 80–90 | Strong — most dimensions near ceiling, hard to improve |
+| 90–100 | Exceptional — expect plateau; all dimensions near-maxed |
 
-The score is intended to be **comparable across iterations** — 87 in iteration 5 should mean the same as 87 in iteration 50. If you see scores jumping wildly (e.g., 90 → 40 → 85), the chairman is being inconsistent, which undermines hill-climbing.
+### Sub-Score Breakdown
+
+Below the score dial, the UI shows a progress bar for each dimension (0–20). Colors indicate health:
+
+| Color | Range | Meaning |
+|-------|-------|---------|
+| Green | 16–20 | Strong — near ceiling for this dimension |
+| Amber | 12–15 | Developing — clear room to improve |
+| Red | 0–11 | Weak — this dimension is the bottleneck |
+
+**How to use this for diagnosis.** When a run stalls (all DISCARDs), look at which dimensions are red or amber. Those are the improvement opportunities the council has not yet exploited. Add an explicit exploration direction to `program.md` targeting the lowest-scoring dimension.
+
+Example: if DEPTH is 7/20 across three iterations, add to `program.md`:
+```
+- Add a "Why this design?" section explaining the greedy hill-climbing rationale and tradeoffs
+```
+
+**Why sub-scores prevent anchoring.** With a single 1–100 score, the chairman has no objective anchor — it assigns 95 on iteration 1 and then struggles to score anything higher even if proposals are genuinely better. Each sub-score is anchored to a specific, observable criterion (e.g., "Does the code run? Is there error handling?"). Improving one dimension moves its score independently without requiring all dimensions to improve simultaneously. This allows fine-grained progress at high total scores.
+
+**Terminal output.** Sub-scores are also logged to the terminal after each Stage 3:
+```
+[stage3] Sub-scores: CORRECTNESS=14 | COMPLETENESS=11 | CLARITY=15 | CODE_QUALITY=8 | DEPTH=7 → total=55
+```
 
 ### KEEP / DISCARD Badge
 
@@ -203,14 +264,23 @@ Iter 7: CRASH — evaluate.py exit code 1
 ```
 Check OpenRouter status page and your account credits.
 
-### Early ceiling
+### Early ceiling (1 KEEP then all DISCARDs)
 ```
-Iter 1: KEEP score=91
-Iter 2: DISCARD score=88
-Iter 3: DISCARD score=89
-Iter 4: DISCARD score=90
+Iter 1: KEEP  score=95   ← giant leap from weak baseline
+Iter 2: DISCARD score=88 vs best 95
+Iter 3: DISCARD score=92 vs best 95
+Iter 4: DISCARD score=92 vs best 95
+Iter 5: DISCARD score=88 vs best 95
 ```
-High score on iteration 1 means the initial `artifact.md` was already quite good, or the scoring is lenient. The council will struggle to beat 91. Start with a weaker artifact for a longer improvement arc.
+
+This is the most common pattern after starting with a deliberately weak artifact. The first iteration makes a large jump (weak draft → good essay) which sets the bar very high. Subsequent proposals score 88–92 — genuinely good, but not enough to clear `best_score + IMPROVEMENT_THRESHOLD`.
+
+The clearest diagnostic: watch E's avg_pos across iterations. If it was 4.00 in iteration 1 and has drifted to ~2.00 by iteration 5, the artifact has genuinely improved and the council itself considers it competitive. The DISCARDs are correct — the system is not broken.
+
+**Options:**
+1. Lower `IMPROVEMENT_THRESHOLD` from 2 to 1 in `config.py` — allows finer-grained progress at high scores
+2. Wait — a score of 97+ may eventually emerge
+3. Accept plateau — read the current `artifact.md` and judge whether it is genuinely good
 
 ---
 

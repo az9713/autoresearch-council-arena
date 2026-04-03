@@ -30,6 +30,7 @@ from config import (
     CHAIRMAN_MODEL,
     COUNCIL_MODELS,
     MAX_ARTIFACT_WORDS,
+    SCORING_DIMENSIONS,
 )
 from openrouter import query_model, query_models_parallel
 
@@ -44,11 +45,15 @@ Your proposal competes against proposals from other AI models.
 The council will anonymously rank all proposals — including the current version.
 Write to WIN."""
 
-def _build_stage1_prompt(program: str, artifact: str, history: str, critique: str) -> str:
+def _build_stage1_prompt(program: str, artifact: str, history: str, critique: str, tried_strategies: str = "") -> str:
     parts = [
         f"PROGRAM OBJECTIVES:\n{program}",
         f"CURRENT ARTIFACT:\n{artifact}",
     ]
+    if tried_strategies.strip():
+        parts.append(
+            f"STRATEGIES ALREADY TRIED — do not repeat these, propose something meaningfully different:\n{tried_strategies}"
+        )
     if history.strip():
         parts.append(f"RECENT EXPERIMENT HISTORY (last 5 iterations):\n{history}")
     if critique.strip():
@@ -59,7 +64,7 @@ def _build_stage1_prompt(program: str, artifact: str, history: str, critique: st
         "- Output ONLY the full improved text. No preamble, no meta-commentary.\n"
         "- Make a specific, meaningful improvement (not just cosmetic rewording).\n"
         "- Stay within word limits specified in the program.\n"
-        "- Consider the critique and try a strategy not yet attempted."
+        "- Consider the critique and try a strategy not listed in STRATEGIES ALREADY TRIED."
     )
     return "\n\n---\n\n".join(parts)
 
@@ -69,6 +74,7 @@ async def stage1_propose(
     artifact: str,
     history: str,
     critique: str,
+    tried_strategies: str = "",
 ) -> dict[str, str]:
     """Stage 1: All council models propose improved versions in parallel.
 
@@ -76,7 +82,7 @@ async def stage1_propose(
     Failed models (None response) are excluded.
     Letters are assigned in council model order: A, B, C, D.
     """
-    prompt = _build_stage1_prompt(program, artifact, history, critique)
+    prompt = _build_stage1_prompt(program, artifact, history, critique, tried_strategies)
     messages = [
         {"role": "system", "content": STAGE1_SYSTEM},
         {"role": "user", "content": prompt},
@@ -211,13 +217,13 @@ async def stage2_rank(
 
     for model, resp in responses.items():
         if resp is None or not resp.get("content"):
-            print(f"[stage2] {model} returned no response — skipping vote", flush=True)
+            print(f"[stage2] {model} returned no response — skipping vote", file=sys.stderr, flush=True)
             continue
         content = resp["content"]
         ranking = _parse_ranking(content, valid_display_letters)
         if ranking is None:
-            print(f"[stage2] {model} ranking parse failed — skipping vote", flush=True)
-            print(f"[stage2] raw response tail: {content[-200:]}", flush=True)
+            print(f"[stage2] {model} ranking parse failed — skipping vote", file=sys.stderr, flush=True)
+            print(f"[stage2] raw response tail: {content[-200:]}", file=sys.stderr, flush=True)
             continue
         # Reasoning = everything before "FINAL RANKING:"
         parts = re.split(r"FINAL RANKING:", content, maxsplit=1)
@@ -258,7 +264,7 @@ async def stage2_rank(
 
 STAGE3_SYSTEM = """\
 You are the Chairman of an AI writing council.
-Your role: select the best version, assign a quality score, and provide actionable critique."""
+Your role: select the best version, score it across specific dimensions, and provide actionable critique."""
 
 def _build_stage3_prompt(
     proposals: dict[str, str],
@@ -274,6 +280,15 @@ def _build_stage3_prompt(
         f"  {r['letter']} (original label): avg_position={r['avg_position']:.2f}, votes={r['votes']}"
         for r in aggregate
     )
+    # Build dimension instructions and format lines from config
+    dim_instructions = "\n".join(
+        f"   SCORE_{key} (0–20): {desc}"
+        for key, desc in SCORING_DIMENSIONS
+    )
+    dim_format = "\n".join(
+        f"SCORE_{key}: [integer 0-20]"
+        for key, _ in SCORING_DIMENSIONS
+    )
     return (
         f"PROGRAM OBJECTIVES:\n{program}\n\n"
         f"CURRENT ARTIFACT (Version E — baseline):\n{current_artifact}\n\n"
@@ -281,12 +296,15 @@ def _build_stage3_prompt(
         f"PEER RANKING RESULTS (lower avg_position = ranked higher by peers):\n{rank_table}\n\n"
         "YOUR TASK:\n"
         "1. Select the winner (A, B, C, D, or E if none of the proposals improve on the current version).\n"
-        "2. Assign a council_score (1–100) reflecting the absolute quality of the winning version.\n"
-        "   Be consistent: use the same scale across iterations so scores are comparable.\n"
+        "2. Score the WINNING version on each dimension below (0–20 each). Be strict and consistent\n"
+        "   across iterations — the same quality should receive the same score every time.\n"
+        f"{dim_instructions}\n"
+        "   COUNCIL_SCORE is the sum of all dimension scores (0–100).\n"
         "3. Write a concise critique (3–5 sentences): what worked, what didn't, what to try next.\n\n"
         "Format your response EXACTLY as follows (these lines are machine-parsed):\n\n"
         "WINNER: [letter]\n"
-        "COUNCIL_SCORE: [integer 1-100]\n\n"
+        f"{dim_format}\n"
+        "COUNCIL_SCORE: [sum of dimension scores]\n\n"
         "CRITIQUE:\n"
         "[your critique here]"
     )
@@ -310,7 +328,7 @@ async def stage3_judge(
     resp = await query_model(CHAIRMAN_MODEL, messages)
 
     if resp is None or not resp.get("content"):
-        print("[stage3] Chairman returned no response — defaulting to E (no improvement)", flush=True)
+        print("[stage3] Chairman returned no response — defaulting to E (no improvement)", file=sys.stderr, flush=True)
         return {
             "winner": "E",
             "council_score": 0,
@@ -325,10 +343,18 @@ async def stage3_judge(
     winner_match = re.search(r"WINNER:\s*([A-E])", content)
     winner = winner_match.group(1) if winner_match else "E"
 
-    # Parse COUNCIL_SCORE
-    score_match = re.search(r"COUNCIL_SCORE:\s*(\d+)", content)
-    council_score = int(score_match.group(1)) if score_match else 0
-    council_score = max(1, min(100, council_score))  # clamp to [1, 100]
+    # Parse per-dimension sub-scores — clamp each to [0, 20]
+    sub_scores = {}
+    for key, _ in SCORING_DIMENSIONS:
+        match = re.search(rf"SCORE_{key}:\s*(\d+)", content)
+        sub_scores[key] = max(0, min(20, int(match.group(1)))) if match else 0
+
+    # Compute total from sub-scores — don't trust chairman arithmetic
+    council_score = max(1, min(100, sum(sub_scores.values())))
+
+    # Log breakdown
+    breakdown = " | ".join(f"{k}={v}" for k, v in sub_scores.items())
+    print(f"[stage3] Sub-scores: {breakdown} → total={council_score}", file=sys.stderr, flush=True)
 
     # Parse CRITIQUE
     critique_match = re.search(r"CRITIQUE:\s*(.*)", content, re.DOTALL)
@@ -345,7 +371,7 @@ async def stage3_judge(
         print(
             f"[stage3] Winning proposal ({winner}) exceeds {MAX_ARTIFACT_WORDS} words "
             f"({word_count}) — falling back to E",
-            flush=True,
+            file=sys.stderr, flush=True,
         )
         winner = "E"
         winning_text = current_artifact
@@ -353,6 +379,7 @@ async def stage3_judge(
     return {
         "winner": winner,
         "council_score": council_score,
+        "sub_scores": sub_scores,
         "critique": critique,
         "winning_text": winning_text,
         "chairman_full_response": content,
@@ -386,17 +413,20 @@ async def main() -> None:
     critique = ""
     if Path("critique.md").exists():
         critique = Path("critique.md").read_text(encoding="utf-8")
+    tried_strategies = ""
+    if Path("tried_strategies.md").exists():
+        tried_strategies = Path("tried_strategies.md").read_text(encoding="utf-8")
 
     # Stage 1 — parallel proposals
-    print("[evaluate] Stage 1: generating proposals...", flush=True)
-    proposals = await stage1_propose(program, artifact, history, critique)
+    print("[evaluate] Stage 1: generating proposals...", file=sys.stderr, flush=True)
+    proposals = await stage1_propose(program, artifact, history, critique, tried_strategies)
 
     if len(proposals) == 0:
-        print("[evaluate] All council models failed in Stage 1 — aborting", flush=True)
+        print("[evaluate] All council models failed in Stage 1 — aborting", file=sys.stderr, flush=True)
         sys.exit(1)
 
     model_names = _model_names()
-    print(f"[evaluate] Stage 1 complete: {len(proposals)} proposals ({', '.join(proposals.keys())})", flush=True)
+    print(f"[evaluate] Stage 1 complete: {len(proposals)} proposals ({', '.join(proposals.keys())})", file=sys.stderr, flush=True)
     _emit_event({
         "type": "stage1_complete",
         "proposals": proposals,          # full text, no truncation
@@ -404,16 +434,16 @@ async def main() -> None:
     })
 
     # Stage 2 — anonymous ranking
-    print("[evaluate] Stage 2: ranking proposals...", flush=True)
+    print("[evaluate] Stage 2: ranking proposals...", file=sys.stderr, flush=True)
     aggregate, shuffle_map, per_model_votes = await stage2_rank(proposals, artifact, program)
 
     if len(aggregate) < 2:
-        print("[evaluate] Insufficient rankings from Stage 2 — aborting", flush=True)
+        print("[evaluate] Insufficient rankings from Stage 2 — aborting", file=sys.stderr, flush=True)
         sys.exit(1)
 
-    print("[evaluate] Stage 2 rankings:", flush=True)
+    print("[evaluate] Stage 2 rankings:", file=sys.stderr, flush=True)
     for r in aggregate:
-        print(f"  {r['letter']} avg_pos={r['avg_position']:.2f} votes={r['votes']}", flush=True)
+        print(f"  {r['letter']} avg_pos={r['avg_position']:.2f} votes={r['votes']}", file=sys.stderr, flush=True)
     _emit_event({
         "type": "stage2_complete",
         "rankings": aggregate,
@@ -423,16 +453,17 @@ async def main() -> None:
     })
 
     # Stage 3 — chairman judgment
-    print("[evaluate] Stage 3: chairman judging...", flush=True)
+    print("[evaluate] Stage 3: chairman judging...", file=sys.stderr, flush=True)
     result = await stage3_judge(proposals, aggregate, artifact, program)
 
     winner_model = model_names.get(result["winner"], CHAIRMAN_MODEL if result["winner"] == "E" else "unknown")
-    print(f"[evaluate] Stage 3 complete: winner={result['winner']} score={result['council_score']}", flush=True)
+    print(f"[evaluate] Stage 3 complete: winner={result['winner']} score={result['council_score']}", file=sys.stderr, flush=True)
     _emit_event({
         "type": "stage3_complete",
         "winner": result["winner"],
         "winner_model": winner_model,
         "council_score": result["council_score"],
+        "sub_scores": result["sub_scores"],
         "critique": result["critique"],
         "chairman_full_response": result["chairman_full_response"],
         "chairman_model": CHAIRMAN_MODEL,

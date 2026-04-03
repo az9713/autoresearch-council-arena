@@ -7,6 +7,7 @@ Two public functions:
 """
 
 import asyncio
+import sys
 import httpx
 from config import OPENROUTER_API_KEY, OPENROUTER_API_URL, API_TIMEOUT
 
@@ -41,7 +42,7 @@ async def query_model(
             "reasoning": data["choices"][0]["message"].get("reasoning"),
         }
     except Exception as e:
-        print(f"[openrouter] Error querying {model}: {e}", flush=True)
+        print(f"[openrouter] Error querying {model}: {e}", file=sys.stderr, flush=True)
         return None
 
 
