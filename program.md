@@ -1,43 +1,60 @@
-# Arena: Technical Tutorial Optimization
+# Arena: Pytest Test Suite Optimization
 
 ## Topic
-How to build a minimal LLM evaluation loop in Python — a step-by-step tutorial for ML engineers who want to move from one-off prompt experiments to systematic, automated optimization.
+Write a comprehensive pytest test suite for a Python REST API client class (`TaskClient`) that wraps a JSON task-management API. The test file should exercise the client's CRUD operations, error handling, and edge cases using proper mocking and pytest best practices.
 
 ## Target Audience
-ML engineers and AI developers who:
-- Are comfortable with Python and basic async/await
-- Have used at least one LLM API (OpenAI, Anthropic, or similar)
-- Want to move from manual, artisanal prompt testing to repeatable, automated experimentation
-- Are skeptical of over-engineered frameworks and want a lean, working implementation they can understand in 10 minutes
+Python developers who:
+- Build and maintain API client libraries
+- Use pytest as their primary test framework
+- Care about test isolation, coverage, and maintainability
+- Want a reference test suite they can adapt for their own API clients
+
+## The API Client Under Test
+The `TaskClient` class wraps a JSON REST API at `https://api.example.com/v1`. It supports:
+- `create_task(title, description=None, priority="medium")` → returns task dict
+- `get_task(task_id)` → returns task dict or raises `NotFoundError`
+- `list_tasks(status=None, page=1, per_page=20)` → returns `{"tasks": [...], "total": int}`
+- `update_task(task_id, **fields)` → returns updated task dict
+- `delete_task(task_id)` → returns None on success
+- Uses Bearer token authentication via `Authorization` header
+- Raises `TaskClientError` (base), `NotFoundError`, `AuthError`, `RateLimitError`, `ServerError`
 
 ## Evaluation Criteria (0–20 points each, total 100)
 
-1. **Correctness** — Is the code syntactically valid and logically correct? Would it actually run without modification on a clean Python 3.10+ environment? Are there no subtle bugs in the loop logic, metric extraction, or API call?
+1. **Case coverage** — Does the test suite cover all five CRUD operations (create, get, list, update, delete)? Are both success paths and failure paths tested? Are edge cases present (empty task list, pagination, duplicate creation, missing optional fields)?
 
-2. **Completeness** — Does the tutorial cover all essential steps: API key setup, making an LLM call, defining a metric function, implementing KEEP/DISCARD logic, running the loop, and saving results? Are there obvious gaps a reader would immediately notice?
+2. **Assertion quality** — Are assertions specific and meaningful? Do tests verify response body fields (not just `assert result`), status codes, headers, and side effects? Are assertion error messages descriptive? No tautological assertions (`assert x is not None`)?
 
-3. **Clarity** — Can a reader with intermediate Python skills follow the tutorial step by step without getting lost? Are concepts introduced before they are used? Are code examples explained inline?
+3. **Isolation** — Are tests properly isolated from the real API? Is HTTP traffic mocked using `respx`, `responses`, or `unittest.mock`? Are pytest fixtures used for setup/teardown? Can tests run in any order without affecting each other? No shared mutable module-level state?
 
-4. **Code quality** — Is the Python idiomatic and safe? Are there no hardcoded secrets? Is there basic error handling for API failures? Are variable names meaningful? Is the code structured so a reader could extend it?
+4. **Error handling** — Does the suite test error scenarios: network timeouts, 404 not found, 401 unauthorized, 429 rate limited, 500 server error, malformed JSON responses? Are the correct exception types and messages verified?
 
-5. **Depth** — Does the tutorial explain *why*, not just *how*? Are key design decisions (why greedy hill-climbing, why a subprocess, why capture stdout) justified? Are tradeoffs acknowledged?
+5. **Maintainability** — Are test functions named descriptively (`test_create_task_with_missing_title_raises_validation_error`)? Are there shared fixtures to reduce duplication? Is `@pytest.mark.parametrize` used where appropriate? Are non-obvious tests documented with docstrings? Is test data realistic?
 
 ## Constraints
-- 800–1200 words of prose (code blocks do not count toward the word limit)
-- Must include at least one complete, runnable Python code example using the OpenRouter API
-- Do not fabricate API responses, library functions, or benchmark numbers
-- All code must use `https://openrouter.ai/api/v1/chat/completions` as the endpoint
-- API key must be loaded from an environment variable, never hardcoded
+- 80–300 lines of Python code
+- Must use pytest (not unittest.TestCase style)
+- Must mock HTTP calls — no real network requests
+- Must import from a hypothetical `task_client` module: `from task_client import TaskClient, NotFoundError, AuthError, RateLimitError, ServerError`
+- All test functions must start with `test_`
+- Test data should use realistic field values, not placeholders like "test" or "foo"
 
 ## Exploration Directions
-Each iteration should try one strategy not yet attempted:
-- Fix correctness issues: add timeout parameter, fix error handling in the API call, correct metric extraction
-- Improve completeness: add cost tracking, parallel model queries, saving results to a TSV file, git commit on KEEP
-- Improve clarity: add a "what you will build" overview section, inline comments explaining each step, a worked example showing a before/after artifact
-- Improve code quality: replace hardcoded values with named constants, use `.env` file for secrets, add type hints, handle API errors gracefully
-- Improve depth: add a "why greedy hill-climbing?" section, explain the subprocess pattern, discuss when to stop the loop
-- Add a "common pitfalls" section: metric gaming, circular feedback, runaway costs
-- Add a concrete worked example with real input/output showing a score improving across iterations
+Each iteration should try ONE strategy not yet attempted:
+- **Case coverage**: Add tests for an untested CRUD operation (update, delete, list with filters, list with pagination)
+- **Case coverage**: Add edge case tests (empty list response, create with only required fields, get with invalid ID format)
+- **Assertion quality**: Replace vague assertions (`assert result`, `assert result is not None`) with specific field checks (`assert result["title"] == "Deploy v2.1"`)
+- **Assertion quality**: Add assertion messages to help debugging (`assert resp["priority"] == "high", f"Expected high priority, got {resp['priority']}"`)
+- **Isolation**: Replace real HTTP calls with `respx` mock routes or `unittest.mock.patch`
+- **Isolation**: Extract shared setup into `@pytest.fixture` functions (client instance, auth headers, sample task data)
+- **Isolation**: Remove module-level mutable state and execution-order dependencies
+- **Error handling**: Add tests for specific HTTP error codes (401, 404, 429, 500)
+- **Error handling**: Add test for network timeout (`httpx.TimeoutException`)
+- **Error handling**: Add test for malformed JSON response
+- **Maintainability**: Rename generic test functions (`test1`, `test2`) to descriptive names
+- **Maintainability**: Use `@pytest.mark.parametrize` for testing multiple priority values or status filters
+- **Maintainability**: Add docstrings to non-obvious test functions explaining what scenario is being verified
 
 ## NEVER STOP
 Run continuously. Each iteration should attempt a strategy not yet tried.

@@ -1,23 +1,47 @@
-# Why Autoresearch and LLM Council Are Important
+```python
+"""Tests for TaskClient API wrapper."""
+import httpx
+from task_client import TaskClient
 
-AI is getting better really fast. There are many new tools coming out every day.
-Two of the most interesting ones are autoresearch and LLM council, made by Andrej Karpathy.
+BASE_URL = "https://api.example.com/v1"
+TOKEN = "sk-test-abc123"
 
-Autoresearch is a way to do experiments automatically. It runs many experiments and keeps
-the best results. LLM council uses multiple AI models to get better answers.
+# shared state for tests
+created_id = None
 
-Together, these two things could be very powerful. They might be a way to make AI that
-improves itself. This is sometimes called recursive self-intelligence.
 
-The idea is simple. You have a loop. The loop makes changes. Then it checks if the changes
-are better. If they are better, it keeps them. If not, it throws them away. This happens
-over and over again.
+def test1():
+    """Test creating a task."""
+    client = TaskClient(BASE_URL, token=TOKEN)
+    result = client.create_task("test task", description="a]description", priority="high")
+    global created_id
+    created_id = result["id"]
+    assert result is not None
+    assert result["title"]
 
-This could be important for AI research. It could save time and money. Instead of having
-humans do all the experiments, the AI can do them automatically.
 
-There are some challenges though. The AI might not always make good decisions. It might
-get stuck and not improve. These are things that need to be worked on.
+def test2():
+    """Test getting a task."""
+    client = TaskClient(BASE_URL, token=TOKEN)
+    result = client.get_task(created_id)
+    assert result
+    assert "id" in result
 
-But overall, autoresearch and LLM council seem like promising tools. They could help make
-AI research faster and cheaper. This is worth paying attention to.
+
+def test3():
+    """Test not found."""
+    client = TaskClient(BASE_URL, token=TOKEN)
+    try:
+        client.get_task("nonexistent-id-999")
+        assert False, "Should have raised"
+    except Exception as e:
+        assert "not found" in str(e).lower()
+
+
+def test4():
+    """Test list tasks."""
+    client = TaskClient(BASE_URL, token=TOKEN)
+    result = client.list_tasks()
+    assert result is not None
+    assert isinstance(result, dict)
+```

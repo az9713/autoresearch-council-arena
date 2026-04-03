@@ -23,21 +23,21 @@ COUNCIL_MODELS = [
 CHAIRMAN_MODEL = "openai/gpt-4o-mini"
 
 # --- Experiment loop ---
-IMPROVEMENT_THRESHOLD = 1   # council_score must improve by >= this to KEEP
+IMPROVEMENT_THRESHOLD = 0   # any strict score improvement is a KEEP (score > best_score)
 
 # --- Scoring dimensions ---
 # Each dimension is scored 0-20 by the chairman. They must sum to 100.
 # Edit these to match the "Evaluation Criteria" section of program.md.
-# The key (e.g. "CORRECTNESS") appears verbatim in the chairman prompt and response.
+# The key (e.g. "CASE_COVERAGE") appears verbatim in the chairman prompt and response.
 SCORING_DIMENSIONS = [
-    ("CORRECTNESS",  "Is the code syntactically valid and logically correct? Would it run without modification?"),
-    ("COMPLETENESS", "Does the tutorial cover all essential steps: API setup, metric, KEEP/DISCARD logic, loop, saving results?"),
-    ("CLARITY",      "Can a reader with intermediate Python skills follow step by step without getting lost?"),
-    ("CODE_QUALITY", "Is the Python idiomatic and safe? No hardcoded secrets? Basic error handling present?"),
-    ("DEPTH",        "Does the tutorial explain why, not just how? Are design decisions justified and tradeoffs acknowledged?"),
+    ("CASE_COVERAGE",      "Does the test suite cover all CRUD operations (create, read, update, delete, list)? Are both success and failure paths tested? Are edge cases covered (empty list, not found, duplicate, pagination)?"),
+    ("ASSERTION_QUALITY",  "Are assertions specific and meaningful? Do tests check response bodies, status codes, and side effects? Are error messages in assertions descriptive? No tautological assertions like 'assert result is not None'?"),
+    ("ISOLATION",          "Are tests properly isolated from external services? Is HTTP properly mocked (respx, unittest.mock, or responses)? Are fixtures used? Can tests run in any order? No shared mutable state between tests?"),
+    ("ERROR_HANDLING",     "Does the suite test error scenarios: network timeouts, 4xx responses, 5xx responses, malformed JSON, rate limiting, authentication failures? Are exception types and messages checked?"),
+    ("MAINTAINABILITY",    "Are tests well-organized with descriptive names? Are there helper fixtures to reduce duplication? Is parametrize used where appropriate? Are there docstrings for non-obvious tests? Is test data realistic?"),
 ]
 EXPERIMENT_TIMEOUT = 300    # 5-minute wall-clock budget per iteration (matches autoresearch)
-MAX_ARTIFACT_WORDS = 3000   # hard-reject proposals exceeding this
+MAX_ARTIFACT_WORDS = 5000   # hard-reject proposals exceeding this (higher for code artifacts)
 PLATEAU_WINDOW = 10         # warn after this many consecutive DISCARDs
 
 # --- Cost limit ---
